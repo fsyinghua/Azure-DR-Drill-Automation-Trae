@@ -1,11 +1,23 @@
 {
   "subscription": {
-    "id": "your-subscription-id",
-    "name": "your-subscription-name"
+    "defaultId": "your-subscription-id",
+    "defaultName": "your-subscription-name"
+  },
+  "discovery": {
+    "subscriptions": {
+      "mode": "all",
+      "allowList": [],
+      "denyList": []
+    },
+    "cache": {
+      "enabled": true,
+      "path": "state\\discovery-cache.json",
+      "ttlMinutes": 1440
+    }
   },
   "recoveryServices": {
-    "vaultName": "your-asr-vault-name",
-    "resourceGroup": "your-resource-group-name"
+    "defaultVaultName": "your-asr-vault-name",
+    "defaultResourceGroup": "your-resource-group-name"
   },
   "regions": {
     "source": "eastasia",
@@ -15,10 +27,22 @@
     "testVirtualNetworkName": "test-dr-vnet",
     "testSubnetName": "test-dr-subnet"
   },
+  "persistence": {
+    "type": "sqlite",
+    "databasePath": "state\\dr-drill.db"
+  },
   "execution": {
     "timeoutMinutes": 30,
     "maxRetries": 3,
-    "concurrentJobs": 3,
-    "batchSize": 3
+    "maxConcurrentVms": 3,
+    "maxConcurrentJobs": 3,
+    "batchSize": 3,
+    "pollIntervalSeconds": 30
+  },
+  "progress": {
+    "enablePerVmPhaseNotification": true,
+    "includeOverallProgress": true,
+    "overallSummaryIntervalSeconds": 300,
+    "notificationThrottleSeconds": 10
   }
 }

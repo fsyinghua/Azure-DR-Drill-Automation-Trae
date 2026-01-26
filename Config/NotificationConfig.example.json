@@ -24,5 +24,11 @@
     "onComplete": true,
     "onError": true,
     "onPhaseComplete": true
+  },
+  "progress": {
+    "enablePerVmPhaseNotification": true,
+    "includeOverallProgress": true,
+    "overallSummaryIntervalSeconds": 300,
+    "notificationThrottleSeconds": 10
   }
 }

@@ -6,6 +6,10 @@
 Logs/
 *.log
 
+# Runtime state directory and SQLite database files
+state/
+*.db
+
 # Configuration files with sensitive data
 Config/AzureConfig.json
 Config/NotificationConfig.json

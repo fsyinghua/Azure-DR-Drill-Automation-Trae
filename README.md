@@ -54,7 +54,7 @@ Copy-Item Config\AzureConfig.example.json Config\AzureConfig.json
 ## 项目结构
 
 ```
-DR-Drill-Automation/
+Azure-DR-Drill-Automation/
 ├── Config/                    # 配置文件
 ├── Scripts/                   # 脚本文件
 │   ├── Core/                  # 核心功能

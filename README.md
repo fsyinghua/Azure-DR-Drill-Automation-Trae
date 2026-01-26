@@ -31,10 +31,10 @@ cd Azure-DR-Drill-Automation
 Copy-Item Config\AzureConfig.example.json Config\AzureConfig.json
 
 # 3. 编辑配置文件（最小配置原则）
-# 在启用自动发现模式下，仅需修改以下必需项：
-# - regions.source/target: 源/目标区域
-# - persistence.databasePath: SQLite 数据库路径
-# 其他配置项均有默认值，可根据需要调整
+# 在启用自动发现模式下，所有配置项都有默认值：
+# - persistence.databasePath: SQLite 数据库路径（默认 state\\dr-drill.db）
+# 如需通知，配置 NotificationConfig.json 中的 Teams Webhook 或 SMTP 信息
+# 其他配置项均可保持默认值
 
 # 4. 执行模拟验证
 .\Scripts\Main\Test-DR-Simulation.ps1 -WhatIf

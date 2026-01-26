@@ -1,8 +1,4 @@
 {
-  "regions": {
-    "source": "eastasia",
-    "target": "southeastasia"
-  },
   "persistence": {
     "type": "sqlite",
     "databasePath": "state\\dr-drill.db"

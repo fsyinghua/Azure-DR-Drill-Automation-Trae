@@ -1,0 +1,28 @@
+{
+  "teams": {
+    "enabled": false,
+    "webhookUrl": "your-teams-webhook-url",
+    "title": "ASR DR Drill Notification"
+  },
+  "email": {
+    "enabled": false,
+    "smtpServer": "your-smtp-server",
+    "smtpPort": 587,
+    "from": "your-email@company.com",
+    "to": [
+      "admin@company.com",
+      "ops@company.com"
+    ],
+    "useSSL": true,
+    "credentials": {
+      "username": "your-smtp-username",
+      "password": "your-smtp-password"
+    }
+  },
+  "notifications": {
+    "onStart": true,
+    "onComplete": true,
+    "onError": true,
+    "onPhaseComplete": true
+  }
+}

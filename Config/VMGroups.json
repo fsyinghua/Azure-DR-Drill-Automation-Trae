@@ -1,0 +1,67 @@
+{
+  "groups": {
+    "GIT": {
+      "description": "GIT Department Servers",
+      "vms": [
+        "INFGAL01VMP",
+        "INFMID02VMP", 
+        "INFFPS01VMP",
+        "UNF01VMP",
+        "UNF02VMP",
+        "UNF03VMP"
+      ],
+      "priority": "high",
+      "batchSize": 2
+    },
+    "GFD": {
+      "description": "GFD Department Servers",
+      "vms": [
+        "DMS15SSEGHK",
+        "DMSP06UATDHHK"
+      ],
+      "priority": "medium",
+      "batchSize": 2
+    },
+    "GLD": {
+      "description": "GLD Department Servers",
+      "vms": [
+        "GLD02SSDHHK",
+        "GLD02SSEGHK",
+        "GLDAPP01VMP"
+      ],
+      "priority": "medium",
+      "batchSize": 2
+    },
+    "GSD": {
+      "description": "GSD Department Servers",
+      "vms": [
+        "GSDAPP01VMP",
+        "GSDAPP02VMT",
+        "GSDCSADB01VMP"
+      ],
+      "priority": "high",
+      "batchSize": 2
+    },
+    "JF": {
+      "description": "Jardine Foundation Servers",
+      "vms": [
+        "JFAP03VMD"
+      ],
+      "priority": "low",
+      "batchSize": 1
+    },
+    "OTHER": {
+      "description": "Other Servers",
+      "vms": [
+        "CA01SSEGHK",
+        "DMS16SSEGHK"
+      ],
+      "priority": "low",
+      "batchSize": 1
+    }
+  },
+  "excluded": [
+    "INFTHY03VMP",
+    "INFTHY04VMP"
+  ]
+}

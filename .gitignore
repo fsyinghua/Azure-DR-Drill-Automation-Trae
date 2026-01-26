@@ -1,0 +1,38 @@
+# PowerShell modules
+*.psm1
+*.psd1
+
+# Logs
+Logs/
+*.log
+
+# Configuration files with sensitive data
+Config/AzureConfig.json
+Config/NotificationConfig.json
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# PowerShell Studio
+*.psproj
+
+# Test results
+TestResults/
+*.tests.xml
+
+# Azure artifacts
+*.azure
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.bak
+*.backup

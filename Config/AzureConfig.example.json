@@ -1,0 +1,24 @@
+{
+  "subscription": {
+    "id": "your-subscription-id",
+    "name": "your-subscription-name"
+  },
+  "recoveryServices": {
+    "vaultName": "your-asr-vault-name",
+    "resourceGroup": "your-resource-group-name"
+  },
+  "regions": {
+    "source": "eastasia",
+    "target": "southeastasia"
+  },
+  "network": {
+    "testVirtualNetworkName": "test-dr-vnet",
+    "testSubnetName": "test-dr-subnet"
+  },
+  "execution": {
+    "timeoutMinutes": 30,
+    "maxRetries": 3,
+    "concurrentJobs": 3,
+    "batchSize": 3
+  }
+}

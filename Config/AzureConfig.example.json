@@ -8,6 +8,13 @@
       "testVirtualNetworkName": "test-dr-vnet",
       "testSubnetName": "test-dr-subnet"
     },
+    "discovery": {
+      "cache": {
+        "enabled": true,
+        "path": "state\\discovery-cache.json",
+        "ttlMinutes": 1440
+      }
+    },
     "subscription": {
       "defaultId": "",
       "defaultName": ""
@@ -22,11 +29,6 @@
       "mode": "all",
       "allowList": [],
       "denyList": []
-    },
-    "cache": {
-      "enabled": true,
-      "path": "state\\discovery-cache.json",
-      "ttlMinutes": 1440
     }
   },
   "execution": {

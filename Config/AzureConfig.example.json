@@ -3,15 +3,15 @@
     "source": "eastasia",
     "target": "southeastasia"
   },
-  "network": {
-    "testVirtualNetworkName": "test-dr-vnet",
-    "testSubnetName": "test-dr-subnet"
-  },
   "persistence": {
     "type": "sqlite",
     "databasePath": "state\\dr-drill.db"
   },
   "defaults": {
+    "network": {
+      "testVirtualNetworkName": "test-dr-vnet",
+      "testSubnetName": "test-dr-subnet"
+    },
     "subscription": {
       "defaultId": "",
       "defaultName": ""

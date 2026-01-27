@@ -1,9 +1,9 @@
 ﻿<#
 .SYNOPSIS
-    Azure Login Module - Provides unified Azure authentication management
+    Azure登录模块 - 提供统一的Azure认证管理功能
 
 .DESCRIPTION
-    This module provides Azure login, status check, subscription selection, and token caching functionality
+    此模块提供Azure登录、状态检查、订阅选择等功能，集成token缓存机制
 
 .NOTES
     Version: 1.0.0
@@ -107,7 +107,7 @@ function Invoke-AzureDeviceLogin {
     try {
         Write-Host ""
         Write-Host "========================================" -ForegroundColor Cyan
-        Write-Host "Azure Device Login" -ForegroundColor Cyan
+        Write-Host "Azure设备登录" -ForegroundColor Cyan
         Write-Host "========================================" -ForegroundColor Cyan
         Write-Host ""
         
@@ -116,9 +116,9 @@ function Invoke-AzureDeviceLogin {
         $context = Get-AzContext -ErrorAction Stop
         if ($context) {
             Write-Host ""
-            Write-Host "Login successful!" -ForegroundColor Green
-            Write-Host "Account: $($context.Account.Id)" -ForegroundColor White
-            Write-Host "Subscription: $($context.Subscription.Name)" -ForegroundColor White
+            Write-Host "登录成功!" -ForegroundColor Green
+            Write-Host "账户: $($context.Account.Id)" -ForegroundColor White
+            Write-Host "订阅: $($context.Subscription.Name)" -ForegroundColor White
             Write-Host ""
             
             return $true
@@ -128,7 +128,7 @@ function Invoke-AzureDeviceLogin {
     }
     catch {
         Write-Host ""
-        Write-Host "Login failed: $_" -ForegroundColor Red
+        Write-Host "登录失败: $_" -ForegroundColor Red
         Write-Host ""
         return $false
     }
@@ -154,7 +154,7 @@ function Select-AzureSubscription {
         if ($SubscriptionId) {
             $result = Select-AzSubscription -SubscriptionId $SubscriptionId -ErrorAction Stop
             if ($result) {
-                Write-Host "Switched to subscription: $($result.Subscription.Name)" -ForegroundColor Green
+                Write-Host "已切换到订阅: $($result.Subscription.Name)" -ForegroundColor Green
                 return $true
             }
             return $false
@@ -164,45 +164,45 @@ function Select-AzureSubscription {
             $subscriptions = Get-AzSubscription -ErrorAction Stop
             
             if ($subscriptions.Count -eq 0) {
-                Write-Host "No subscriptions found" -ForegroundColor Red
+                Write-Host "未找到任何订阅" -ForegroundColor Red
                 return $false
             }
             
             if ($subscriptions.Count -eq 1) {
-                Write-Host "Only one subscription, auto-select: $($subscriptions[0].Name)" -ForegroundColor Yellow
+                Write-Host "只有一个订阅，自动选择: $($subscriptions[0].Name)" -ForegroundColor Yellow
                 $result = Select-AzSubscription -SubscriptionId $subscriptions[0].Id -ErrorAction Stop
                 return $result -ne $null
             }
             
             Write-Host ""
-            Write-Host "Found $($subscriptions.Count) subscriptions:" -ForegroundColor Cyan
+            Write-Host "找到 $($subscriptions.Count) 个订阅:" -ForegroundColor Cyan
             Write-Host ""
             
             for ($i = 0; $i -lt $subscriptions.Count; $i++) {
-                $isSelected = if ($subscriptions[$i].Id -eq (Get-AzContext).Subscription.Id) { " [Current]" } else { "" }
+                $isSelected = if ($subscriptions[$i].Id -eq (Get-AzContext).Subscription.Id) { " [当前]" } else { "" }
                 Write-Host "  [$($i + 1)] $($subscriptions[$i].Name) ($($subscriptions[$i].Id))$isSelected" -ForegroundColor White
             }
             
             Write-Host ""
-            $selection = Read-Host "Please select subscription (1-$($subscriptions.Count))"
+            $selection = Read-Host "请选择订阅 (1-$($subscriptions.Count))"
             
             $selectedIndex = [int]$selection - 1
             if ($selectedIndex -ge 0 -and $selectedIndex -lt $subscriptions.Count) {
                 $result = Select-AzSubscription -SubscriptionId $subscriptions[$selectedIndex].Id -ErrorAction Stop
                 if ($result) {
-                    Write-Host "Switched to subscription: $($result.Subscription.Name)" -ForegroundColor Green
+                    Write-Host "已切换到订阅: $($result.Subscription.Name)" -ForegroundColor Green
                     return $true
                 }
             }
             
-            Write-Host "Invalid selection" -ForegroundColor Red
+            Write-Host "无效的选择" -ForegroundColor Red
             return $false
         }
         
         return $false
     }
     catch {
-        Write-Host "Failed to select subscription: $_" -ForegroundColor Red
+        Write-Host "选择订阅失败: $_" -ForegroundColor Red
         return $false
     }
 }
@@ -217,17 +217,17 @@ function Initialize-AzureSession {
     
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host "Initializing Azure Session" -ForegroundColor Cyan
+    Write-Host "初始化Azure会话" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
     
     $loginStatus = Test-AzureLoginStatus
     
     if ($loginStatus.IsLoggedIn -and -not $ForceLogin) {
-        Write-Host "Current login status:" -ForegroundColor Yellow
-        Write-Host "  Account: $($loginStatus.Account)" -ForegroundColor White
-        Write-Host "  Subscription: $($loginStatus.SubscriptionName)" -ForegroundColor White
-        Write-Host "  Tenant: $($loginStatus.TenantId)" -ForegroundColor White
+        Write-Host "当前登录状态:" -ForegroundColor Yellow
+        Write-Host "  账户: $($loginStatus.Account)" -ForegroundColor White
+        Write-Host "  订阅: $($loginStatus.SubscriptionName)" -ForegroundColor White
+        Write-Host "  租户: $($loginStatus.TenantId)" -ForegroundColor White
         Write-Host ""
         
         if ($Config.EnableTokenCache) {
@@ -237,11 +237,11 @@ function Initialize-AzureSession {
                 $timeRemaining = $expiresOn - (Get-Date)
                 
                 if ($timeRemaining.TotalMinutes -gt 5) {
-                    Write-Host "Token cache is valid, remaining time: $($timeRemaining.ToString('hh\:mm\:ss'))" -ForegroundColor Green
+                    Write-Host "Token缓存有效，剩余时间: $($timeRemaining.ToString('hh\:mm\:ss'))" -ForegroundColor Green
                     Write-Host ""
                     
                     if ($TargetSubscriptionId -and $TargetSubscriptionId -ne $loginStatus.SubscriptionId) {
-                        Write-Host "Need to switch to target subscription..." -ForegroundColor Yellow
+                        Write-Host "需要切换到目标订阅..." -ForegroundColor Yellow
                         $switchResult = Select-AzureSubscription -SubscriptionId $TargetSubscriptionId
                         if ($switchResult) {
                             $context = Get-AzContext -ErrorAction Stop
@@ -252,33 +252,33 @@ function Initialize-AzureSession {
                     return @{
                         Success = $true
                         Context = Get-AzContext -ErrorAction Stop
-                        Message = "Using cached token"
+                        Message = "使用缓存的token"
                     }
                 }
                 else {
-                    Write-Host "Token will expire soon ($($timeRemaining.TotalMinutes) minutes remaining)" -ForegroundColor Yellow
-                    Write-Host "Suggest to re-login" -ForegroundColor Yellow
+                    Write-Host "Token即将过期 ($($timeRemaining.TotalMinutes) 分钟剩余)" -ForegroundColor Yellow
+                    Write-Host "建议重新登录" -ForegroundColor Yellow
                     Write-Host ""
                 }
             }
         }
         
         if ($Interactive) {
-            $relogin = Read-Host "Do you want to re-login? (Y/N)"
+            $relogin = Read-Host "是否重新登录? (Y/N)"
             if ($relogin -eq "Y" -or $relogin -eq "y") {
                 $loginResult = Invoke-AzureDeviceLogin
                 if (-not $loginResult) {
                     return @{
                         Success = $false
                         Context = $null
-                        Message = "Login failed"
+                        Message = "登录失败"
                     }
                 }
             }
         }
     }
     else {
-        Write-Host "Not logged in to Azure" -ForegroundColor Yellow
+        Write-Host "未登录到Azure" -ForegroundColor Yellow
         Write-Host ""
         
         $loginResult = Invoke-AzureDeviceLogin
@@ -286,7 +286,7 @@ function Initialize-AzureSession {
             return @{
                 Success = $false
                 Context = $null
-                Message = "Login failed"
+                Message = "登录失败"
             }
         }
     }
@@ -295,12 +295,12 @@ function Initialize-AzureSession {
     
     if ($Config.EnableTokenCache) {
         Save-LoginCache -Context $context -TokenExpiryMinutes $Config.TokenCacheExpiryMinutes
-        Write-Host "Login information cached" -ForegroundColor Green
+        Write-Host "登录信息已缓存" -ForegroundColor Green
     }
     
     if ($TargetSubscriptionId -and $TargetSubscriptionId -ne $context.Subscription.Id) {
         Write-Host ""
-        Write-Host "Switching to target subscription..." -ForegroundColor Yellow
+        Write-Host "切换到目标订阅..." -ForegroundColor Yellow
         $switchResult = Select-AzureSubscription -SubscriptionId $TargetSubscriptionId
         if ($switchResult) {
             $context = Get-AzContext -ErrorAction Stop
@@ -312,7 +312,7 @@ function Initialize-AzureSession {
             return @{
                 Success = $false
                 Context = $null
-                Message = "Failed to switch subscription"
+                Message = "切换订阅失败"
             }
         }
     }
@@ -321,7 +321,7 @@ function Initialize-AzureSession {
         $subscriptions = Get-AzSubscription
         if ($subscriptions.Count -gt 1) {
             Write-Host ""
-            $changeSub = Read-Host "Do you want to switch subscription? (Y/N)"
+            $changeSub = Read-Host "是否切换订阅? (Y/N)"
             if ($changeSub -eq "Y" -or $changeSub -eq "y") {
                 Select-AzureSubscription -Interactive
                 $context = Get-AzContext -ErrorAction Stop
@@ -336,19 +336,19 @@ function Initialize-AzureSession {
     
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Green
-    Write-Host "Azure Session Initialized Successfully" -ForegroundColor Green
+    Write-Host "Azure会话初始化完成" -ForegroundColor Green
     Write-Host "========================================" -ForegroundColor Green
-    Write-Host "Account: $($finalContext.Account.Id)" -ForegroundColor White
-    Write-Host "Subscription: $($finalContext.Subscription.Name)" -ForegroundColor White
-    Write-Host "Subscription ID: $($finalContext.Subscription.Id)" -ForegroundColor White
-    Write-Host "Tenant: $($finalContext.Tenant.Id)" -ForegroundColor White
+    Write-Host "账户: $($finalContext.Account.Id)" -ForegroundColor White
+    Write-Host "订阅: $($finalContext.Subscription.Name)" -ForegroundColor White
+    Write-Host "订阅ID: $($finalContext.Subscription.Id)" -ForegroundColor White
+    Write-Host "租户: $($finalContext.Tenant.Id)" -ForegroundColor White
     Write-Host "========================================" -ForegroundColor Green
     Write-Host ""
     
     return @{
         Success = $true
         Context = $finalContext
-        Message = "Session initialized successfully"
+        Message = "会话初始化成功"
     }
 }
 
@@ -357,16 +357,16 @@ function Clear-AzureLoginCache {
         $cacheFilePath = Get-LoginCacheFilePath
         if (Test-Path $cacheFilePath) {
             Remove-Item -Path $cacheFilePath -Force
-            Write-Host "Login cache cleared" -ForegroundColor Green
+            Write-Host "登录缓存已清除" -ForegroundColor Green
             return $true
         }
         else {
-            Write-Host "Login cache not found" -ForegroundColor Yellow
+            Write-Host "未找到登录缓存" -ForegroundColor Yellow
             return $false
         }
     }
     catch {
-        Write-Host "Failed to clear login cache: $_" -ForegroundColor Red
+        Write-Host "清除登录缓存失败: $_" -ForegroundColor Red
         return $false
     }
 }
@@ -376,30 +376,30 @@ function Show-AzureLoginStatus {
     
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host "Azure Login Status" -ForegroundColor Cyan
+    Write-Host "Azure登录状态" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
     
     if ($status.IsLoggedIn) {
-        Write-Host "Status: Logged in" -ForegroundColor Green
-        Write-Host "Account: $($status.Account)" -ForegroundColor White
-        Write-Host "Subscription: $($status.SubscriptionName)" -ForegroundColor White
-        Write-Host "Subscription ID: $($status.SubscriptionId)" -ForegroundColor White
-        Write-Host "Tenant ID: $($status.TenantId)" -ForegroundColor White
-        Write-Host "Environment: $($status.Environment)" -ForegroundColor White
+        Write-Host "状态: 已登录" -ForegroundColor Green
+        Write-Host "账户: $($status.Account)" -ForegroundColor White
+        Write-Host "订阅: $($status.SubscriptionName)" -ForegroundColor White
+        Write-Host "订阅ID: $($status.SubscriptionId)" -ForegroundColor White
+        Write-Host "租户ID: $($status.TenantId)" -ForegroundColor White
+        Write-Host "环境: $($status.Environment)" -ForegroundColor White
         
         if ($status.IsLoggedIn) {
             $cache = Get-LoginCache
             if ($cache) {
                 $expiresOn = [DateTime]::Parse($cache.ExpiresOn)
                 $timeRemaining = $expiresOn - (Get-Date)
-                Write-Host "Cache expiry time: $($expiresOn.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor Gray
-                Write-Host "Remaining time: $($timeRemaining.ToString('hh\:mm\:ss'))" -ForegroundColor Gray
+                Write-Host "缓存过期时间: $($expiresOn.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor Gray
+                Write-Host "剩余时间: $($timeRemaining.ToString('hh\:mm\:ss'))" -ForegroundColor Gray
             }
         }
     }
     else {
-        Write-Host "Status: Not logged in" -ForegroundColor Red
+        Write-Host "状态: 未登录" -ForegroundColor Red
     }
     
     Write-Host ""

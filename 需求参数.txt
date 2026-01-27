@@ -1,0 +1,160 @@
+Azure灾难演练批量执行脚本 - 需求参数配置说明
+
+====================================
+必需参数文件
+====================================
+
+1. vmlist.txt - 虚拟机列表
+   格式：每行一个虚拟机名称
+   示例：
+   vm-prod-001
+   vm-prod-002
+   vm-prod-003
+
+2. rsv.txt - RSV恢复服务保管库列表
+   格式：每行一个RSV名称
+   示例：
+   rsv-primary-eastus
+   rsv-secondary-westus
+
+3. config.txt - 配置参数文件（本文件）
+   包含以下参数：
+
+====================================
+配置参数说明
+====================================
+
+# Azure订阅ID
+SubscriptionId=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+# 资源组名称
+ResourceGroupName=rg-dr-test
+
+# 主区域
+PrimaryRegion=eastus
+
+# 次要区域（故障转移目标区域）
+SecondaryRegion=westus
+
+# 故障转移类型（可选：TestFailover, PlannedFailover, UnplannedFailover）
+FailoverType=TestFailover
+
+# 是否关闭虚拟机（true/false）
+ShutdownVM=true
+
+# 关闭超时时间（分钟）
+ShutdownTimeout=15
+
+# 故障转移超时时间（分钟）
+FailoverTimeout=30
+
+# 等待时间（分钟）- 各步骤之间的等待时间
+WaitTime=5
+
+# 日志文件路径
+LogPath=.\logs\dr-drill.log
+
+# 是否启用详细日志（true/false）
+VerboseLogging=true
+
+# 是否在失败时继续执行下一台虚拟机（true/false）
+ContinueOnError=true
+
+# 并发执行数量（同时处理的虚拟机数量）
+ConcurrentTasks=3
+
+# 邮件通知配置（可选）
+EnableEmailNotification=false
+SmtpServer=smtp.example.com
+SmtpPort=587
+SmtpUser=notification@example.com
+SmtpPassword=yourpassword
+EmailFrom=dr-drill@example.com
+EmailTo=team@example.com
+
+# Webhook通知配置（可选）
+EnableWebhookNotification=false
+WebhookUrl=https://hooks.example.com/webhook
+
+# Token缓存配置（推荐启用）
+# 启用后，脚本会缓存Azure认证token，避免频繁重新登录
+EnableTokenCache=true
+# Token缓存过期时间（分钟），建议设置为60分钟或更长
+TokenCacheExpiryMinutes=60
+
+====================================
+使用说明
+====================================
+
+1. 准备工作：
+   - 确保已安装 Azure PowerShell 模块
+   - 使用 device login 方式登录：Connect-AzAccount -UseDeviceAuthentication
+   - 确认有足够的权限执行故障转移操作
+
+2. 配置步骤：
+   - 编辑 vmlist.txt，添加需要演练的虚拟机
+   - 编辑 rsv.txt，添加对应的恢复服务保管库
+   - 编辑 config.txt，配置各项参数
+
+3. 执行演练：
+   - 运行主脚本：.\Azure-DR-Drill.ps1
+   - 脚本会自动执行以下步骤：
+     a) Failover (with shutdown)
+     b) Commit
+     c) Re-protect
+     d) Fallback (with shutdown)
+     e) Commit
+     f) Re-protect
+
+4. 监控进度：
+   - 查看日志文件：.\logs\dr-drill.log
+   - 查看控制台输出
+
+====================================
+注意事项
+====================================
+
+1. 首次执行建议先测试单台虚拟机
+2. 确保虚拟机已配置好灾难恢复
+3. 建议在非业务高峰期执行
+4. 执行前请备份重要数据
+5. 确保网络连接稳定
+6. 故障转移期间虚拟机将不可用
+7. 演练完成后验证虚拟机状态
+8. Token缓存机制（推荐启用）：
+   - 启用后可避免频繁重新登录
+   - Token缓存保存在 .\cache\azure-token-cache.json
+   - Token过期后会自动提示重新认证
+   - 如需禁用，设置 EnableTokenCache=false
+
+====================================
+故障排查
+====================================
+
+常见错误及解决方案：
+
+1. 认证错误：
+   - 重新运行 Connect-AzAccount -UseDeviceAuthentication
+
+2. 权限不足：
+   - 确认账户有足够的RBAC权限
+   - 需要的权限：Site Recovery Contributor 或更高
+
+3. 虚拟机未配置灾难恢复：
+   - 检查虚拟机是否已启用ASR
+   - 确认恢复服务保管库配置正确
+
+4. 网络连接问题：
+   - 检查防火墙设置
+   - 确认可以访问Azure服务端点
+
+5. 超时错误：
+   - 增加 ShutdownTimeout 或 FailoverTimeout 参数值
+   - 检查虚拟机是否响应正常
+
+====================================
+版本信息
+====================================
+版本：1.0.0
+创建日期：2026-01-27
+作者：Azure DR Team

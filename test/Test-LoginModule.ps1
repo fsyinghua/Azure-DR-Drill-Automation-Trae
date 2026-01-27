@@ -25,28 +25,43 @@ Write-Host "步骤 0: 检查Azure PowerShell模块..." -ForegroundColor Yellow
 try {
     $azModule = $null
     
-    # 方法1: 检查已加载的模块
+    # 方法1: 检查已加载的模块（最快）
     $azModule = Get-Module -Name Az -ErrorAction SilentlyContinue
     
-    # 方法2: 检查可用的模块
+    # 方法2: 检查可用的模块（使用-All参数更可靠）
     if (-not $azModule) {
-        $azModule = Get-Module -ListAvailable -Name Az -ErrorAction SilentlyContinue
+        $azModule = Get-Module -ListAvailable -Name Az -All -ErrorAction SilentlyContinue | Select-Object -First 1
     }
     
-    # 方法3: 尝试导入模块来检测
+    # 方法3: 检查模块路径是否存在（不导入模块）
     if (-not $azModule) {
-        try {
-            Import-Module Az -ErrorAction Stop
-            $azModule = Get-Module -Name Az
-        }
-        catch {
-            $azModule = $null
+        $modulePaths = $env:PSModulePath -split ';'
+        foreach ($path in $modulePaths) {
+            $azPath = Join-Path $path "Az"
+            if (Test-Path $azPath) {
+                # 查找模块清单文件
+                $manifestFile = Get-ChildItem -Path $azPath -Filter "Az.psd1" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+                if ($manifestFile) {
+                    # 读取模块版本而不导入
+                    $manifestContent = Get-Content $manifestFile.FullName -Raw -ErrorAction SilentlyContinue
+                    if ($manifestContent -match 'ModuleVersion\s*=\s*[''']([^'''']+)') {
+                        $version = [version]$matches[1]
+                        $azModule = [PSCustomObject]@{
+                            Name = "Az"
+                            Version = $version
+                            Path = $azPath
+                        }
+                        break
+                    }
+                }
+            }
         }
     }
     
     if (-not $azModule) {
         Write-Host "未找到Azure PowerShell模块，正在安装..." -ForegroundColor Red
-        Install-Module -Name Az -AllowClobber -Scope CurrentUser -Force
+        Write-Host "这可能需要几分钟时间，请耐心等待..." -ForegroundColor Yellow
+        Install-Module -Name Az -AllowClobber -Scope CurrentUser -Force -WarningAction SilentlyContinue
         Write-Host "Azure PowerShell模块安装完成" -ForegroundColor Green
     }
     else {
@@ -55,7 +70,7 @@ try {
     }
 }
 catch {
-    Write-Host "检查/安装Azure PowerShell模块失败: $_" -ForegroundColor Red
+    Write-Host "检查Azure PowerShell模块失败: $_" -ForegroundColor Red
     Write-Host "请手动运行: Install-Module -Name Az -AllowClobber -Scope CurrentUser -Force" -ForegroundColor Yellow
     exit 1
 }

@@ -33,7 +33,7 @@ try {
         $azModule = Get-Module -ListAvailable -Name Az -All -ErrorAction SilentlyContinue | Select-Object -First 1
     }
     
-    # 方法3: 检查模块路径是否存在（不导入模块）
+    # 方法3: 检查模块路径是否存在（不导入模块，只检查文件）
     if (-not $azModule) {
         $modulePaths = $env:PSModulePath -split ';'
         foreach ($path in $modulePaths) {
@@ -42,18 +42,17 @@ try {
                 # 查找模块清单文件
                 $manifestFile = Get-ChildItem -Path $azPath -Filter "Az.psd1" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
                 if ($manifestFile) {
-                    # 读取模块版本而不导入
-                    $manifestContent = Get-Content $manifestFile.FullName -Raw -ErrorAction SilentlyContinue
-                    if ($manifestContent -match 'ModuleVersion\s*=\s*[''']([^'''']+)') {
-                        $version = [version]$matches[1]
-                        $azModule = [PSCustomObject]@{
-                            Name = "Az"
-                            Version = $version
-                            Path = $azPath
-                        }
-                        break
+                    # 模块存在，创建简单对象
+                    $azModule = [PSCustomObject]@{
+                        Name = "Az"
+                        Version = "Unknown"
+                        Path = $azPath
                     }
+                    break
                 }
+            }
+            if ($azModule) {
+                break
             }
         }
     }
@@ -66,7 +65,9 @@ try {
     }
     else {
         Write-Host "Azure PowerShell模块已安装" -ForegroundColor Green
-        Write-Host "  版本: $($azModule.Version)" -ForegroundColor Gray
+        if ($azModule.Version -ne "Unknown") {
+            Write-Host "  版本: $($azModule.Version)" -ForegroundColor Gray
+        }
     }
 }
 catch {

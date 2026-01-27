@@ -21,17 +21,17 @@ function Get-LoginCacheFilePath {
 
 function Save-LoginCache {
     param(
-        [hashtable]$Context,
+        [object]$Context,
         [int]$TokenExpiryMinutes = 60
     )
     
     try {
         $cacheData = @{
-            AccountId = $context.Account.Id
-            TenantId = $context.Tenant.Id
-            SubscriptionId = $context.Subscription.Id
-            SubscriptionName = $context.Subscription.Name
-            Environment = $context.Environment.Name
+            AccountId = $Context.Account.Id
+            TenantId = $Context.Tenant.Id
+            SubscriptionId = $Context.Subscription.Id
+            SubscriptionName = $Context.Subscription.Name
+            Environment = $Context.Environment.Name
             ExpiresOn = (Get-Date).AddMinutes($TokenExpiryMinutes).ToString("o")
             CachedAt = (Get-Date).ToString("o")
         }
@@ -410,6 +410,7 @@ function Show-AzureLoginStatus {
 Export-ModuleMember -Function @(
     'Test-AzureLoginStatus',
     'Invoke-AzureDeviceLogin',
+    'Get-AzureSubscriptions',
     'Select-AzureSubscription',
     'Initialize-AzureSession',
     'Clear-AzureLoginCache',

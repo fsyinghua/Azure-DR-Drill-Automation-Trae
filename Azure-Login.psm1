@@ -238,6 +238,7 @@ function Initialize-AzureSession {
                 
                 if ($timeRemaining.TotalMinutes -gt 5) {
                     Write-Host "Token缓存有效，剩余时间: $($timeRemaining.ToString('hh\:mm\:ss'))" -ForegroundColor Green
+                    Write-Host "直接使用缓存的token" -ForegroundColor Green
                     Write-Host ""
                     
                     if ($TargetSubscriptionId -and $TargetSubscriptionId -ne $loginStatus.SubscriptionId) {
@@ -249,9 +250,21 @@ function Initialize-AzureSession {
                         }
                     }
                     
+                    $finalContext = Get-AzContext -ErrorAction Stop
+                    Write-Host ""
+                    Write-Host "========================================" -ForegroundColor Green
+                    Write-Host "Azure会话初始化完成（使用缓存）" -ForegroundColor Green
+                    Write-Host "========================================" -ForegroundColor Green
+                    Write-Host "账户: $($finalContext.Account.Id)" -ForegroundColor White
+                    Write-Host "订阅: $($finalContext.Subscription.Name)" -ForegroundColor White
+                    Write-Host "订阅ID: $($finalContext.Subscription.Id)" -ForegroundColor White
+                    Write-Host "租户: $($finalContext.Tenant.Id)" -ForegroundColor White
+                    Write-Host "========================================" -ForegroundColor Green
+                    Write-Host ""
+                    
                     return @{
                         Success = $true
-                        Context = Get-AzContext -ErrorAction Stop
+                        Context = $finalContext
                         Message = "使用缓存的token"
                     }
                 }

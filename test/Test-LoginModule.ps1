@@ -23,7 +23,27 @@ Write-Host ""
 
 Write-Host "步骤 0: 检查Azure PowerShell模块..." -ForegroundColor Yellow
 try {
-    $azModule = Get-Module -ListAvailable -Name Az -ErrorAction SilentlyContinue
+    $azModule = $null
+    
+    # 方法1: 检查已加载的模块
+    $azModule = Get-Module -Name Az -ErrorAction SilentlyContinue
+    
+    # 方法2: 检查可用的模块
+    if (-not $azModule) {
+        $azModule = Get-Module -ListAvailable -Name Az -ErrorAction SilentlyContinue
+    }
+    
+    # 方法3: 尝试导入模块来检测
+    if (-not $azModule) {
+        try {
+            Import-Module Az -ErrorAction Stop
+            $azModule = Get-Module -Name Az
+        }
+        catch {
+            $azModule = $null
+        }
+    }
+    
     if (-not $azModule) {
         Write-Host "未找到Azure PowerShell模块，正在安装..." -ForegroundColor Red
         Install-Module -Name Az -AllowClobber -Scope CurrentUser -Force
@@ -31,10 +51,12 @@ try {
     }
     else {
         Write-Host "Azure PowerShell模块已安装" -ForegroundColor Green
+        Write-Host "  版本: $($azModule.Version)" -ForegroundColor Gray
     }
 }
 catch {
-    Write-Host "安装Azure PowerShell模块失败: $_" -ForegroundColor Red
+    Write-Host "检查/安装Azure PowerShell模块失败: $_" -ForegroundColor Red
+    Write-Host "请手动运行: Install-Module -Name Az -AllowClobber -Scope CurrentUser -Force" -ForegroundColor Yellow
     exit 1
 }
 

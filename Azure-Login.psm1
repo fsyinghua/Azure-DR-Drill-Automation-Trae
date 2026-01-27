@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Azure Login Module - Provides unified Azure authentication management
 

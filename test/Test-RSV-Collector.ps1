@@ -31,8 +31,11 @@ Write-Host ""
 $OutputEncoding = [System.Text.Encoding]::UTF8
 $PSDefaultParameterValues['*:Encoding'] = 'utf8'
 
+# 获取项目根目录
+$projectRoot = Split-Path -Parent $PSScriptRoot
+
 # 导入登录模块
-$modulePath = Join-Path $PSScriptRoot "Azure-Login.psm1"
+$modulePath = Join-Path $projectRoot "Azure-Login.psm1"
 Write-Host "步骤 1: 导入登录模块..." -ForegroundColor Yellow
 Write-Host "  模块路径: $modulePath" -ForegroundColor White
 
@@ -46,7 +49,7 @@ catch {
 }
 
 # 导入RSV采集模块
-$rsvCollectorPath = Join-Path $PSScriptRoot "Azure-RSV-Collector.psm1"
+$rsvCollectorPath = Join-Path $projectRoot "Azure-RSV-Collector.psm1"
 Write-Host ""
 Write-Host "步骤 2: 导入RSV采集模块..." -ForegroundColor Yellow
 Write-Host "  模块路径: $rsvCollectorPath" -ForegroundColor White
@@ -71,9 +74,9 @@ $config = @{
     SubscriptionId = $null
     ResourceGroupName = $null
     RSVList = @()
-    DatabasePath = ".\data\rsv-data.db"
-    LogPath = ".\logs\rsv-collector.log"
-    ExportPath = ".\exports\"
+    DatabasePath = Join-Path $projectRoot "data\rsv-data.db"
+    LogPath = Join-Path $projectRoot "logs\rsv-collector.log"
+    ExportPath = Join-Path $projectRoot "exports\"
     IncludeBackupVMs = $true
     IncludeReplicatedItems = $true
     EnableIncrementalCollection = $false

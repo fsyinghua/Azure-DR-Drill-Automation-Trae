@@ -87,6 +87,23 @@ function Test-SQLiteModule {
     catch {
         # 方法2: 检查lib目录下的DLL
         $moduleDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+        # 如果MyInvocation.MyCommand.Path为null，使用PSScriptRoot作为备用
+        if (-not $moduleDir) {
+            $moduleDir = $PSScriptRoot
+        }
+
+        # 如果还是为null，使用当前目录作为备用
+        if (-not $moduleDir) {
+            $moduleDir = Get-Location
+        }
+
+        # 验证路径有效性
+        if (-not $moduleDir) {
+            Write-RSVLog "无法确定模块目录" -Level "WARNING"
+            return $false
+        }
+
         $libDir = Join-Path $moduleDir "lib"
         $dllPath = Join-Path $libDir "System.Data.SQLite.dll"
 
@@ -145,8 +162,19 @@ function Initialize-RSVDatabase {
     try {
         Write-RSVLog "初始化数据库: $DatabasePath" -Level "INFO"
 
+        # 验证DatabasePath参数
+        if (-not $DatabasePath) {
+            throw "DatabasePath参数不能为空"
+        }
+
         # 确保目录存在
         $dbDir = Split-Path -Path $DatabasePath -Parent
+
+        # 如果Split-Path返回空字符串（相对路径），使用当前目录
+        if (-not $dbDir) {
+            $dbDir = Get-Location
+        }
+
         if (-not (Test-Path $dbDir)) {
             New-Item -ItemType Directory -Path $dbDir -Force | Out-Null
             Write-RSVLog "创建数据库目录: $dbDir" -Level "INFO"
@@ -839,8 +867,19 @@ function Export-RSVDataToCSV {
     try {
         Write-RSVLog "开始导出数据到CSV: $FilePath" -Level "INFO"
 
+        # 验证FilePath参数
+        if (-not $FilePath) {
+            throw "FilePath参数不能为空"
+        }
+
         # 确保目录存在
         $exportDir = Split-Path -Path $FilePath -Parent
+
+        # 如果Split-Path返回空字符串（相对路径），使用当前目录
+        if (-not $exportDir) {
+            $exportDir = Get-Location
+        }
+
         if (-not (Test-Path $exportDir)) {
             New-Item -ItemType Directory -Path $exportDir -Force | Out-Null
         }
@@ -936,6 +975,11 @@ function Export-RSVDataToExcel {
     try {
         Write-RSVLog "开始导出数据到Excel: $FilePath" -Level "INFO"
 
+        # 验证FilePath参数
+        if (-not $FilePath) {
+            throw "FilePath参数不能为空"
+        }
+
         # 检查ImportExcel模块
         $importExcelModule = Get-Module -Name ImportExcel -ListAvailable -ErrorAction SilentlyContinue
         if (-not $importExcelModule) {
@@ -945,6 +989,12 @@ function Export-RSVDataToExcel {
 
         # 确保目录存在
         $exportDir = Split-Path -Path $FilePath -Parent
+
+        # 如果Split-Path返回空字符串（相对路径），使用当前目录
+        if (-not $exportDir) {
+            $exportDir = Get-Location
+        }
+
         if (-not (Test-Path $exportDir)) {
             New-Item -ItemType Directory -Path $exportDir -Force | Out-Null
         }
@@ -1199,6 +1249,12 @@ function Invoke-RSVCollection {
         # 初始化日志
         $Script:LogPath = if ($Config.LogPath) { $Config.LogPath } else { ".\logs\rsv-collector.log" }
         $logDir = Split-Path -Path $Script:LogPath -Parent
+
+        # 如果Split-Path返回空字符串（相对路径），使用当前目录
+        if (-not $logDir) {
+            $logDir = Get-Location
+        }
+
         if (-not (Test-Path $logDir)) {
             New-Item -ItemType Directory -Path $logDir -Force | Out-Null
         }

@@ -32,7 +32,12 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 $PSDefaultParameterValues['*:Encoding'] = 'utf8'
 
 # 获取项目根目录
-$projectRoot = Split-Path -Parent $PSScriptRoot
+if ($PSScriptRoot) {
+    $projectRoot = Split-Path -Parent $PSScriptRoot
+}
+else {
+    $projectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+}
 
 # 导入登录模块
 $modulePath = Join-Path $projectRoot "Azure-Login.psm1"

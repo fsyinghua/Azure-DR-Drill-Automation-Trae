@@ -1,47 +1,47 @@
-# Az模块修复脚本
-# 解决Az模块版本冲突和损坏问题
+# Az Module Fix Script
+# Fix Az module version conflicts and corruption
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "Az模块修复工具" -ForegroundColor Cyan
+Write-Host "Az Module Fix Tool" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# 步骤1: 检查当前Az模块版本
-Write-Host "[1] 检查当前Az模块版本..." -ForegroundColor Yellow
+# Step 1: Check current Az module versions
+Write-Host "[1] Checking current Az module versions..." -ForegroundColor Yellow
 $azModules = Get-Module -ListAvailable -Name Az* | Sort-Object Name
 if ($azModules) {
-    Write-Host "  找到以下Az模块:" -ForegroundColor White
+    Write-Host "  Found Az modules:" -ForegroundColor White
     foreach ($module in $azModules) {
-        Write-Host "    - $($module.Name) (版本: $($module.Version))" -ForegroundColor White
+        Write-Host "    - $($module.Name) (Version: $($module.Version))" -ForegroundColor White
     }
 }
 else {
-    Write-Host "  未找到任何Az模块" -ForegroundColor Yellow
+    Write-Host "  No Az modules found" -ForegroundColor Yellow
 }
 Write-Host ""
 
-# 步骤2: 卸载所有Az模块
-Write-Host "[2] 卸载所有Az模块..." -ForegroundColor Yellow
+# Step 2: Uninstall all Az modules
+Write-Host "[2] Uninstalling all Az modules..." -ForegroundColor Yellow
 $allAzModules = Get-Module -ListAvailable -Name Az* | Select-Object -ExpandProperty Name | Sort-Object -Unique
 $uninstalledCount = 0
 
 foreach ($moduleName in $allAzModules) {
     try {
-        Write-Host "  卸载: $moduleName" -ForegroundColor White
+        Write-Host "  Uninstalling: $moduleName" -ForegroundColor White
         Uninstall-Module -Name $moduleName -Force -ErrorAction SilentlyContinue
         $uninstalledCount++
     }
     catch {
-        Write-Host "  卸载失败: $moduleName - $_" -ForegroundColor Red
+        Write-Host "  Uninstall failed: $moduleName - $_" -ForegroundColor Red
     }
 }
 
-Write-Host "  已卸载 $uninstalledCount 个模块" -ForegroundColor Green
+Write-Host "  Uninstalled $uninstalledCount modules" -ForegroundColor Green
 Write-Host ""
 
-# 步骤3: 清除PowerShell模块缓存
-Write-Host "[3] 清除PowerShell模块缓存..." -ForegroundColor Yellow
+# Step 3: Clear PowerShell module cache
+Write-Host "[3] Clearing PowerShell module cache..." -ForegroundColor Yellow
 $modulePaths = @(
     "$env:USERPROFILE\Documents\WindowsPowerShell\Modules",
     "$env:USERPROFILE\Documents\PowerShell\Modules",
@@ -55,68 +55,68 @@ foreach ($path in $modulePaths) {
         $azPaths = Get-ChildItem -Path $path -Filter "Az*" -Directory -ErrorAction SilentlyContinue
         foreach ($azPath in $azPaths) {
             try {
-                Write-Host "  删除: $($azPath.FullName)" -ForegroundColor White
+                Write-Host "  Deleting: $($azPath.FullName)" -ForegroundColor White
                 Remove-Item -Path $azPath.FullName -Recurse -Force -ErrorAction SilentlyContinue
                 $clearedCount++
             }
             catch {
-                Write-Host "  删除失败: $($azPath.FullName) - $_" -ForegroundColor Red
+                Write-Host "  Delete failed: $($azPath.FullName) - $_" -ForegroundColor Red
             }
         }
     }
 }
 
-Write-Host "  已清除 $clearedCount 个缓存目录" -ForegroundColor Green
+Write-Host "  Cleared $clearedCount cache directories" -ForegroundColor Green
 Write-Host ""
 
-# 步骤4: 重新安装Az模块
-Write-Host "[4] 重新安装Az模块..." -ForegroundColor Yellow
-Write-Host "  这可能需要几分钟时间..." -ForegroundColor Gray
+# Step 4: Reinstall Az module
+Write-Host "[4] Reinstalling Az module..." -ForegroundColor Yellow
+Write-Host "  This may take a few minutes..." -ForegroundColor Gray
 Write-Host ""
 
 try {
     Install-Module -Name Az -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
-    Write-Host "  Az模块安装成功" -ForegroundColor Green
+    Write-Host "  Az module installed successfully" -ForegroundColor Green
 }
 catch {
-    Write-Host "  Az模块安装失败: $_" -ForegroundColor Red
+    Write-Host "  Az module installation failed: $_" -ForegroundColor Red
     Write-Host ""
-    Write-Host "请尝试手动安装:" -ForegroundColor Yellow
+    Write-Host "Please try manual installation:" -ForegroundColor Yellow
     Write-Host "  Install-Module -Name Az -Scope CurrentUser -Force" -ForegroundColor White
     exit 1
 }
 Write-Host ""
 
-# 步骤5: 验证安装
-Write-Host "[5] 验证Az模块安装..." -ForegroundColor Yellow
+# Step 5: Verify installation
+Write-Host "[5] Verifying Az module installation..." -ForegroundColor Yellow
 $azModule = Get-Module -ListAvailable -Name Az | Select-Object -First 1
 if ($azModule) {
-    Write-Host "  Az模块已安装" -ForegroundColor Green
-    Write-Host "  版本: $($azModule.Version)" -ForegroundColor White
+    Write-Host "  Az module installed" -ForegroundColor Green
+    Write-Host "  Version: $($azModule.Version)" -ForegroundColor White
 
-    # 测试导入
+    # Test import
     try {
         Import-Module -Name Az -Force -ErrorAction Stop
-        Write-Host "  Az模块导入成功" -ForegroundColor Green
+        Write-Host "  Az module imported successfully" -ForegroundColor Green
     }
     catch {
-        Write-Host "  Az模块导入失败: $_" -ForegroundColor Red
+        Write-Host "  Az module import failed: $_" -ForegroundColor Red
         exit 1
     }
 }
 else {
-    Write-Host "  Az模块未找到" -ForegroundColor Red
+    Write-Host "  Az module not found" -ForegroundColor Red
     exit 1
 }
 Write-Host ""
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "Az模块修复完成！" -ForegroundColor Green
+Write-Host "Az Module Fix Complete!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-Write-Host "下一步操作:" -ForegroundColor Cyan
-Write-Host "  1. 重新启动PowerShell" -ForegroundColor White
-Write-Host "  2. 运行: Connect-AzAccount -UseDeviceAuthentication" -ForegroundColor White
-Write-Host "  3. 运行: .\test\Test-RSV-Collector.ps1" -ForegroundColor White
+Write-Host "Next steps:" -ForegroundColor Cyan
+Write-Host "  1. Restart PowerShell" -ForegroundColor White
+Write-Host "  2. Run: Connect-AzAccount -UseDeviceAuthentication" -ForegroundColor White
+Write-Host "  3. Run: .\test\Test-RSV-Collector.ps1" -ForegroundColor White
 Write-Host ""

@@ -943,7 +943,20 @@ function Export-RSVDataToExcel {
         }
         
         $query = "SELECT data_json FROM collection_records $whereClause ORDER BY collection_time DESC"
-        $results = Invoke-SqliteQuery -SQLiteConnection $Script:DatabaseConnection -Query $query
+        
+        # 使用System.Data.SQLite程序集执行查询
+        $command = $Script:DatabaseConnection.CreateCommand()
+        $command.CommandText = $query
+        $reader = $command.ExecuteReader()
+        
+        $results = @()
+        while ($reader.Read()) {
+            $results += [PSCustomObject]@{
+                data_json = $reader["data_json"]
+            }
+        }
+        $reader.Dispose()
+        $command.Dispose()
         
         if (-not $results -or $results.Count -eq 0) {
             Write-RSVLog "没有数据可导出" -Level "WARNING"

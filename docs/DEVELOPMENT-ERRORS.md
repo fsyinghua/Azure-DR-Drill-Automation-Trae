@@ -262,6 +262,53 @@ param(
 
 ---
 
+### 2.5 PowerShell模块导入时编码错误
+
+**错误信息**:
+```
+RSV采集模块导入失败: The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: 
+At E:\JoeHe\codes\Azure-DR-Drill-Automation-Trae\Azure-RSV-Collector.psm1:128 char:10
++         } 
++          ~
+The Try statement is missing its Catch or Finally block.
+
+At E:\JoeHe\codes\Azure-DR-Drill-Automation-Trae\Azure-RSV-Collector.psm1:132 char:46
++             throw "System.Data.SQLiteä¸å¯ç" 
++                                              ~~
+Unexpected token '¨" in expression or statement.
+```
+
+**发生场景**: 导入Azure-RSV-Collector.psm1模块时
+
+**根本原因**: 
+- 文件保存时未使用UTF-8 with BOM编码
+- PowerShell在解析文件时无法正确识别中文字符
+- 导致中文字符被解析为乱码，破坏了语法结构
+
+**修正方案**:
+```powershell
+# 重新保存文件为UTF-8 with BOM格式
+$content = Get-Content ".\Azure-RSV-Collector.psm1" -Raw -Encoding UTF8
+[System.IO.File]::WriteAllText(".\Azure-RSV-Collector.psm1", $content, [System.Text.Encoding]::UTF8)
+
+# 验证文件是否包含BOM
+$bytes = [System.IO.File]::ReadAllBytes(".\Azure-RSV-Collector.psm1")
+$encoding = [System.Text.Encoding]::UTF8
+$preamble = $encoding.GetPreamble()
+$hasBOM = $bytes[0..2] -eq $preamble
+Write-Host "Has UTF8 BOM: $hasBOM"
+```
+
+**预防措施**:
+- 所有PowerShell模块文件（.psm1）必须使用UTF-8 with BOM编码
+- 在项目规范中明确要求文件编码格式
+- 在提交前验证文件编码
+- 使用.editorconfig强制文件编码
+
+**相关文档**: [.trae/project-rules.md](file:///d:/UserProfiles/JoeHe/Codes/Azure-DR-Drill-Automation-Trae/.trae/rules/project_rules.md)
+
+---
+
 ## 三、模块检测问题
 
 ### 3.1 模块检测失败（已安装但未检测到）

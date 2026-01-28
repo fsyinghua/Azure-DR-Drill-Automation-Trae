@@ -1,4 +1,4 @@
-# 远端环境检查脚本
+﻿# 远端环境检查脚本
 # 用于验证远端机器是否满足运行Azure DR Drill Automation脚本的要求
 
 Write-Host ""

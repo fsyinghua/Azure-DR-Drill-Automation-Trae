@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     一键安装所有必需的PowerShell模块
 
@@ -37,7 +37,7 @@ Write-Host ""
 Write-Host "步骤 3: 安装Azure PowerShell模块..." -ForegroundColor Yellow
 try {
     $azModule = Get-Module -ListAvailable -Name Az -ErrorAction SilentlyContinue
-    
+
     if ($azModule) {
         Write-Host "  Az模块已安装: $($azModule.Version)" -ForegroundColor Green
         $update = Read-Host "  是否更新到最新版本? (Y/N)"
@@ -69,24 +69,24 @@ Write-Host "步骤 4: 安装SQLite模块..." -ForegroundColor Yellow
 Write-Host "  注意: SQLite模块是可选的，用于本地存储DR演练结果" -ForegroundColor Gray
 try {
     $sqliteModule = Get-Module -ListAvailable -Name System.Data.SQLite -ErrorAction SilentlyContinue
-    
+
     if ($sqliteModule) {
         Write-Host "  System.Data.SQLite模块已安装: $($sqliteModule.Version)" -ForegroundColor Green
     }
     else {
         Write-Host "  正在查找SQLite模块..." -ForegroundColor Cyan
         $sqliteModules = Find-Module -Name "*SQLite*" -Repository PSGallery
-        
+
         if ($sqliteModules.Count -gt 0) {
             Write-Host "  找到以下SQLite相关模块:" -ForegroundColor White
             for ($i = 0; $i -lt [Math]::Min(5, $sqliteModules.Count); $i++) {
                 Write-Host "    $($i + 1). $($sqliteModules[$i].Name) - $($sqliteModules[$i].Version)" -ForegroundColor Gray
             }
-            
+
             if ($sqliteModules.Count -gt 5) {
                 Write-Host "    ... 还有 $($sqliteModules.Count - 5) 个模块" -ForegroundColor Gray
             }
-            
+
             Write-Host ""
             $installSqlite = Read-Host "  是否安装SQLite模块? (Y/N)"
             if ($installSqlite -eq "Y" -or $installSqlite -eq "y") {
@@ -103,7 +103,7 @@ try {
                         $selectedModule = $sqliteModules[$selectedIndex].Name
                     }
                 }
-                
+
                 Write-Host "  正在安装$selectedModule..." -ForegroundColor Cyan
                 Install-Module -Name $selectedModule -Scope CurrentUser -Force
                 Write-Host "  $selectedModule安装完成" -ForegroundColor Green

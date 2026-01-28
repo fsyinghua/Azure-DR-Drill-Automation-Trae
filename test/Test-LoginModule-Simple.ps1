@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     简化的Azure登录模块测试脚本
 
@@ -36,7 +36,7 @@ Write-Host ""
 Write-Host "步骤 2: 检查登录状态..." -ForegroundColor Yellow
 try {
     $status = Test-AzureLoginStatus
-    
+
     if ($status.IsLoggedIn) {
         Write-Host "  当前登录状态: 已登录" -ForegroundColor Green
         Write-Host "    账户: $($status.Account)" -ForegroundColor White
@@ -58,7 +58,7 @@ Write-Host ""
 Write-Host "步骤 3: 获取所有订阅..." -ForegroundColor Yellow
 try {
     $subscriptions = Get-AzureSubscriptions
-    
+
     if ($subscriptions.Count -eq 0) {
         Write-Host "  未找到任何订阅" -ForegroundColor Red
         Write-Host ""
@@ -66,29 +66,29 @@ try {
         Write-Host "  Connect-AzAccount -UseDeviceAuthentication" -ForegroundColor White
         exit 1
     }
-    
+
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host "Azure订阅列表" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
-    
+
     for ($i = 0; $i -lt $subscriptions.Count; $i++) {
         $sub = $subscriptions[$i]
         $isCurrent = if ($status.IsLoggedIn -and $sub.Id -eq $status.SubscriptionId) { " [当前]" } else { "" }
-        
+
         Write-Host "[$($i + 1)] $($sub.Name)$isCurrent" -ForegroundColor Green
         Write-Host "    ID: $($sub.Id)" -ForegroundColor Gray
         Write-Host "    租户ID: $($sub.TenantId)" -ForegroundColor Gray
         Write-Host "    状态: $($sub.State)" -ForegroundColor Gray
-        
+
         if ($sub.HomeTenantId) {
             Write-Host "    主租户ID: $($sub.HomeTenantId)" -ForegroundColor Gray
         }
-        
+
         Write-Host ""
     }
-    
+
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host "总计: $($subscriptions.Count) 个订阅" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan

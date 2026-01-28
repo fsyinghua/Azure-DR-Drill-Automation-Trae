@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     SQLite使用示例脚本
 
@@ -47,7 +47,7 @@ if (-not $useModule -and -not $useDll) {
     Write-Host "  3. 跳过SQLite功能" -ForegroundColor White
     Write-Host ""
     $choice = Read-Host "  请选择 (1/2/3)"
-    
+
     switch ($choice) {
         "1" {
             Write-Host ""
@@ -88,7 +88,7 @@ if (-not $useModule -and -not $useDll) {
 if (-not $skipSqlite) {
     Write-Host ""
     Write-Host "步骤 2: 初始化SQLite..." -ForegroundColor Yellow
-    
+
     try {
         if ($useDll) {
             # 加载DLL
@@ -105,14 +105,14 @@ if (-not $skipSqlite) {
         Write-Host "  初始化SQLite失败: $_" -ForegroundColor Red
         exit 1
     }
-    
+
     # 步骤3: 创建数据库
     Write-Host ""
     Write-Host "步骤 3: 创建数据库..." -ForegroundColor Yellow
-    
+
     $dbPath = ".\test-dr-results.db"
     $dbExists = Test-Path $dbPath
-    
+
     if ($dbExists) {
         Write-Host "  数据库已存在: $dbPath" -ForegroundColor Yellow
         $overwrite = Read-Host "  是否覆盖? (Y/N)"
@@ -124,19 +124,19 @@ if (-not $skipSqlite) {
             Write-Host "  已删除旧数据库" -ForegroundColor Green
         }
     }
-    
+
     # 步骤4: 创建表
     Write-Host ""
     Write-Host "步骤 4: 创建表..." -ForegroundColor Yellow
-    
+
     try {
         $connectionString = "Data Source=$dbPath;Version=3;"
-        
+
         if ($useDll) {
             # 使用DLL方式
             $connection = New-Object System.Data.SQLite.SQLiteConnection($connectionString)
             $connection.Open()
-            
+
             $command = $connection.CreateCommand()
             $command.CommandText = @"
                 CREATE TABLE IF NOT EXISTS dr_results (
@@ -152,7 +152,7 @@ if (-not $skipSqlite) {
                 );
             "@
             $command.ExecuteNonQuery()
-            
+
             $command.CommandText = @"
                 CREATE TABLE IF NOT EXISTS subscriptions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -164,7 +164,7 @@ if (-not $skipSqlite) {
                 );
             "@
             $command.ExecuteNonQuery()
-            
+
             $connection.Close()
             Write-Host "  表创建成功" -ForegroundColor Green
         }
@@ -178,46 +178,46 @@ if (-not $skipSqlite) {
         Write-Host "  创建表失败: $_" -ForegroundColor Red
         exit 1
     }
-    
+
     # 步骤5: 插入测试数据
     Write-Host ""
     Write-Host "步骤 5: 插入测试数据..." -ForegroundColor Yellow
-    
+
     try {
         if ($useDll) {
             $connection = New-Object System.Data.SQLite.SQLiteConnection($connectionString)
             $connection.Open()
-            
+
             # 插入DR结果
             $command = $connection.CreateCommand()
             $command.CommandText = @"
                 INSERT INTO dr_results (vm_name, operation, status, start_time, end_time, duration_seconds)
                 VALUES (@vm_name, @operation, @status, @start_time, @end_time, @duration_seconds);
             "@
-            
+
             $command.Parameters.AddWithValue("@vm_name", "test-vm-001") | Out-Null
             $command.Parameters.AddWithValue("@operation", "Failover") | Out-Null
             $command.Parameters.AddWithValue("@status", "Success") | Out-Null
             $command.Parameters.AddWithValue("@start_time", "2026-01-27 10:00:00") | Out-Null
             $command.Parameters.AddWithValue("@end_time", "2026-01-27 10:05:00") | Out-Null
             $command.Parameters.AddWithValue("@duration_seconds", 300) | Out-Null
-            
+
             $command.ExecuteNonQuery()
-            
+
             # 插入订阅信息
             $command.CommandText = @"
                 INSERT INTO subscriptions (subscription_id, subscription_name, tenant_id, is_current)
                 VALUES (@subscription_id, @subscription_name, @tenant_id, @is_current);
             "@
-            
+
             $command.Parameters.Clear()
             $command.Parameters.AddWithValue("@subscription_id", "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx") | Out-Null
             $command.Parameters.AddWithValue("@subscription_name", "Test Subscription") | Out-Null
             $command.Parameters.AddWithValue("@tenant_id", "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy") | Out-Null
             $command.Parameters.AddWithValue("@is_current", 1) | Out-Null
-            
+
             $command.ExecuteNonQuery()
-            
+
             $connection.Close()
             Write-Host "  测试数据插入成功" -ForegroundColor Green
         }
@@ -226,26 +226,26 @@ if (-not $skipSqlite) {
         Write-Host "  插入数据失败: $_" -ForegroundColor Red
         exit 1
     }
-    
+
     # 步骤6: 查询数据
     Write-Host ""
     Write-Host "步骤 6: 查询数据..." -ForegroundColor Yellow
-    
+
     try {
         if ($useDll) {
             $connection = New-Object System.Data.SQLite.SQLiteConnection($connectionString)
             $connection.Open()
-            
+
             # 查询DR结果
             $command = $connection.CreateCommand()
             $command.CommandText = "SELECT * FROM dr_results;"
-            
+
             $reader = $command.ExecuteReader()
-            
+
             Write-Host ""
             Write-Host "DR结果:" -ForegroundColor Cyan
             Write-Host "----------------------------------------" -ForegroundColor Cyan
-            
+
             while ($reader.Read()) {
                 Write-Host "  ID: $($reader['id'])" -ForegroundColor White
                 Write-Host "  VM: $($reader['vm_name'])" -ForegroundColor White
@@ -256,17 +256,17 @@ if (-not $skipSqlite) {
                 Write-Host "  耗时: $($reader['duration_seconds'])秒" -ForegroundColor Gray
                 Write-Host "----------------------------------------" -ForegroundColor Cyan
             }
-            
+
             $reader.Close()
-            
+
             # 查询订阅信息
             $command.CommandText = "SELECT * FROM subscriptions;"
             $reader = $command.ExecuteReader()
-            
+
             Write-Host ""
             Write-Host "订阅信息:" -ForegroundColor Cyan
             Write-Host "----------------------------------------" -ForegroundColor Cyan
-            
+
             while ($reader.Read()) {
                 $isCurrent = if ($reader['is_current'] -eq 1) { " [当前]" } else { "" }
                 Write-Host "  ID: $($reader['id'])" -ForegroundColor White
@@ -275,7 +275,7 @@ if (-not $skipSqlite) {
                 Write-Host "  租户ID: $($reader['tenant_id'])" -ForegroundColor White
                 Write-Host "----------------------------------------" -ForegroundColor Cyan
             }
-            
+
             $reader.Close()
             $connection.Close()
         }
@@ -284,41 +284,41 @@ if (-not $skipSqlite) {
         Write-Host "  查询数据失败: $_" -ForegroundColor Red
         exit 1
     }
-    
+
     # 步骤7: 统计信息
     Write-Host ""
     Write-Host "步骤 7: 统计信息..." -ForegroundColor Yellow
-    
+
     try {
         if ($useDll) {
             $connection = New-Object System.Data.SQLite.SQLiteConnection($connectionString)
             $connection.Open()
-            
+
             # 统计DR结果数量
             $command = $connection.CreateCommand()
             $command.CommandText = "SELECT COUNT(*) FROM dr_results;"
             $count = $command.ExecuteScalar()
-            
+
             Write-Host "  DR结果总数: $count" -ForegroundColor Green
-            
+
             # 统计订阅数量
             $command.CommandText = "SELECT COUNT(*) FROM subscriptions;"
             $subCount = $command.ExecuteScalar()
-            
+
             Write-Host "  订阅总数: $subCount" -ForegroundColor Green
-            
+
             # 统计操作类型
             $command.CommandText = "SELECT operation, COUNT(*) as count FROM dr_results GROUP BY operation;"
             $reader = $command.ExecuteReader()
-            
+
             Write-Host ""
             Write-Host "操作统计:" -ForegroundColor Cyan
             Write-Host "----------------------------------------" -ForegroundColor Cyan
-            
+
             while ($reader.Read()) {
                 Write-Host "  $($reader['operation']): $($reader['count'])" -ForegroundColor White
             }
-            
+
             $reader.Close()
             $connection.Close()
         }

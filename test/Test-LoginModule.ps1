@@ -24,15 +24,15 @@ Write-Host ""
 Write-Host "步骤 0: 检查Azure PowerShell模块..." -ForegroundColor Yellow
 try {
     $azModule = $null
-    
+
     # 方法1: 检查已加载的模块（最快）
     $azModule = Get-Module -Name Az -ErrorAction SilentlyContinue
-    
+
     # 方法2: 检查可用的模块（使用-All参数更可靠）
     if (-not $azModule) {
         $azModule = Get-Module -ListAvailable -Name Az -All -ErrorAction SilentlyContinue | Select-Object -First 1
     }
-    
+
     # 方法3: 检查模块路径是否存在（不导入模块，只检查文件）
     if (-not $azModule) {
         $modulePaths = $env:PSModulePath -split ';'
@@ -56,7 +56,7 @@ try {
             }
         }
     }
-    
+
     if (-not $azModule) {
         Write-Host "未找到Azure PowerShell模块，正在安装..." -ForegroundColor Red
         Write-Host "这可能需要几分钟时间，请耐心等待..." -ForegroundColor Yellow
@@ -128,34 +128,34 @@ Write-Host ""
 Write-Host "步骤 4: 获取所有订阅..." -ForegroundColor Yellow
 try {
     $subscriptions = Get-AzureSubscriptions
-    
+
     if ($subscriptions.Count -eq 0) {
         Write-Host "未找到任何订阅" -ForegroundColor Red
         exit 1
     }
-    
+
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host "Azure订阅列表" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
-    
+
     for ($i = 0; $i -lt $subscriptions.Count; $i++) {
         $sub = $subscriptions[$i]
         $isCurrent = if ($sub.Id -eq $session.Context.Subscription.Id) { " [当前]" } else { "" }
-        
+
         Write-Host "[$($i + 1)] $($sub.Name)$isCurrent" -ForegroundColor Green
         Write-Host "    ID: $($sub.Id)" -ForegroundColor Gray
         Write-Host "    租户ID: $($sub.TenantId)" -ForegroundColor Gray
         Write-Host "    状态: $($sub.State)" -ForegroundColor Gray
-        
+
         if ($sub.HomeTenantId) {
             Write-Host "    主租户ID: $($sub.HomeTenantId)" -ForegroundColor Gray
         }
-        
+
         Write-Host ""
     }
-    
+
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host "总计: $($subscriptions.Count) 个订阅" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan

@@ -13,7 +13,7 @@
 
 param(
     [Parameter(Mandatory = $false)]
-    [switch]$WhatIf
+    [switch]$Simulate
 )
 
 # ========================================
@@ -120,14 +120,14 @@ if (Test-Path $configFile) {
         if ($line -match '^([^=]+)=(.+)$') {
             $key = $matches[1].Trim()
             $value = $matches[2].Trim()
-            
+
             switch ($key) {
                 "SubscriptionId" { $config.SubscriptionId = $value }
                 "ResourceGroupName" { $config.ResourceGroupName = $value }
             }
         }
     }
-    
+
     if ($config.SubscriptionId) {
         Write-Host "  订阅ID: $($config.SubscriptionId)" -ForegroundColor White
     }
@@ -139,17 +139,17 @@ if (Test-Path $configFile) {
 # 如果没有RSV列表，自动发现所有RSV
 if ($config.RSVList.Count -eq 0) {
     Write-Host "  自动发现所有RSV..." -ForegroundColor Yellow
-    
+
     # 先初始化数据库连接
     $dbInitialized = Initialize-RSVDatabase -DatabasePath $config.DatabasePath
     if (-not $dbInitialized) {
         Write-Host "  数据库初始化失败" -ForegroundColor Red
         exit 1
     }
-    
+
     # 先尝试从数据库读取RSV列表
     $dbRSVs = Get-RSVListFromDatabase
-    
+
     if ($dbRSVs -and $dbRSVs.Count -gt 0) {
         $allRSVs = $dbRSVs
         Write-Host "  从数据库读取RSV列表: $($dbRSVs.Count) 个" -ForegroundColor Green
@@ -157,14 +157,14 @@ if ($config.RSVList.Count -eq 0) {
     else {
         # 数据库中没有RSV列表，执行自动发现
         $allRSVs = @()
-        
+
         foreach ($sub in $subscriptions) {
             # 切换到该订阅
             $null = Select-AzSubscription -SubscriptionId $sub.Id -ErrorAction SilentlyContinue
-            
+
             # 获取该订阅下的所有RSV
             $rsvs = Get-AzRecoveryServicesVault -ErrorAction SilentlyContinue
-            
+
             foreach ($rsv in $rsvs) {
                 $allRSVs += @{
                     SubscriptionId = $sub.Id
@@ -175,22 +175,22 @@ if ($config.RSVList.Count -eq 0) {
                 }
             }
         }
-        
+
         Write-Host "  发现 $($allRSVs.Count) 个RSV" -ForegroundColor Green
-        
+
         # 保存RSV列表到数据库
         $saved = Save-RSVListToDatabase -RSVList $allRSVs
         if ($saved) {
             Write-Host "  RSV列表已保存到数据库" -ForegroundColor Green
         }
     }
-    
+
     # 关闭数据库连接
     Close-RSVDatabase
-    
+
     # 找到第一个以"rsv"或"RSV"开头的RSV用于测试
     $testRSV = $allRSVs | Where-Object { $_.RSVName -like "rsv*" -or $_.RSVName -like "RSV*" } | Select-Object -First 1
-    
+
     if ($testRSV) {
         $config.TestRSVName = $testRSV.RSVName
         $config.ResourceGroupName = $testRSV.ResourceGroupName
@@ -207,7 +207,7 @@ if ($config.RSVList.Count -eq 0) {
             Write-Host "  选择测试RSV: $($firstRSV.RSVName) (订阅: $($firstRSV.SubscriptionName))" -ForegroundColor Cyan
         }
     }
-    
+
     # 保存所有RSV到配置
     $config.AllRSVs = $allRSVs
 }
@@ -225,14 +225,14 @@ try {
         TokenCacheExpiryMinutes = 60
         Interactive = $false
     }
-    
+
     $sessionResult = Initialize-AzureSession -Config $sessionConfig
-    
+
     if (-not $sessionResult.Success) {
         Write-Host "Azure会话初始化失败: $($sessionResult.Message)" -ForegroundColor Red
         exit 1
     }
-    
+
     Write-Host "Azure会话初始化成功" -ForegroundColor Green
 }
 catch {
@@ -258,7 +258,7 @@ if ($WhatIf) {
     Write-Host "  包含Replicated Items: $($config.IncludeReplicatedItems)" -ForegroundColor White
     Write-Host "  启用增量采集: $($config.EnableIncrementalCollection)" -ForegroundColor White
     Write-Host "  启用自动导出: $($config.EnableAutoExport)" -ForegroundColor White
-    
+
     if ($config.AllRSVs) {
         Write-Host ""
         Write-Host "  发现的RSV:" -ForegroundColor Cyan
@@ -266,7 +266,7 @@ if ($WhatIf) {
             Write-Host "    - $($rsv.RSVName) (订阅: $($rsv.SubscriptionName), 资源组: $($rsv.ResourceGroupName))" -ForegroundColor White
         }
     }
-    
+
     Write-Host ""
     Write-Host "WhatIf模式完成，未执行实际采集" -ForegroundColor Green
     exit 0
@@ -277,13 +277,13 @@ try {
     if ($config.AllRSVs -and $config.AllRSVs.Count -gt 0) {
         Write-Host ""
         Write-Host "  采集所有订阅下的RSV配置..." -ForegroundColor Yellow
-        
+
         foreach ($rsvInfo in $config.AllRSVs) {
             Write-Host "    正在采集: $($rsvInfo.RSVName) (订阅: $($rsvInfo.SubscriptionName))" -ForegroundColor White
-            
+
             # 切换到该订阅
             $null = Select-AzSubscription -SubscriptionId $rsvInfo.SubscriptionId -ErrorAction SilentlyContinue
-            
+
             # 采集该RSV的配置
             $rsvConfig = @{
                 DatabasePath = $config.DatabasePath
@@ -295,22 +295,22 @@ try {
                 EnableIncrementalCollection = $false
                 EnableAutoExport = $false
             }
-            
+
             $result = Invoke-RSVCollection -Config $rsvConfig
         }
-        
+
         Write-Host "  所有RSV采集完成" -ForegroundColor Green
     }
     else {
         # 使用配置的RSV列表采集
         $collectionResult = Invoke-RSVCollection -Config $config
-        
+
         if (-not $collectionResult) {
             Write-Host "RSV配置采集失败" -ForegroundColor Red
             exit 1
         }
     }
-    
+
     Write-Host "RSV配置采集成功" -ForegroundColor Green
 }
 catch {
@@ -327,19 +327,19 @@ Write-Host "步骤 6: 导出测试RSV配置到Excel..." -ForegroundColor Yellow
 
 if ($config.TestRSVName) {
     Write-Host "  导出RSV: $($config.TestRSVName)" -ForegroundColor White
-    
+
     # 创建导出目录
     if (-not (Test-Path $config.ExportPath)) {
         New-Item -ItemType Directory -Path $config.ExportPath -Force | Out-Null
     }
-    
+
     # 生成CSV文件名
     $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
     $backupVMsPath = Join-Path $config.ExportPath "BackupVMs-$($config.TestRSVName)-$timestamp.csv"
     $replicatedItemsPath = Join-Path $config.ExportPath "ReplicatedItems-$($config.TestRSVName)-$timestamp.csv"
-    
+
     Write-Host "  导出路径: $backupVMsPath" -ForegroundColor White
-    
+
     try {
         # 重新打开数据库连接
         $dbInitialized = Initialize-RSVDatabase -DatabasePath $config.DatabasePath
@@ -347,11 +347,11 @@ if ($config.TestRSVName) {
             Write-Host "  数据库初始化失败" -ForegroundColor Red
             return
         }
-        
+
         # 导出Backup VMs
         Write-Host "    导出Backup VMs..." -ForegroundColor White
         $backupVMs = Get-RSVData -DataType "BackupVM" -Filter "RSVName = '$($config.TestRSVName)'" -OrderBy "CollectionTime DESC"
-        
+
         if ($backupVMs -and $backupVMs.Count -gt 0) {
             $backupVMs | Export-Csv -Path $backupVMsPath -NoTypeInformation -Encoding UTF8BOM
             Write-Host "      导出 $($backupVMs.Count) 条Backup VM记录到 $backupVMsPath" -ForegroundColor Green
@@ -359,11 +359,11 @@ if ($config.TestRSVName) {
         else {
             Write-Host "      没有Backup VM记录" -ForegroundColor Yellow
         }
-        
+
         # 导出Replicated Items
         Write-Host "    导出Replicated Items..." -ForegroundColor White
         $replicatedItems = Get-RSVData -DataType "ReplicatedItem" -Filter "RSVName = '$($config.TestRSVName)'" -OrderBy "CollectionTime DESC"
-        
+
         if ($replicatedItems -and $replicatedItems.Count -gt 0) {
             $replicatedItems | Export-Csv -Path $replicatedItemsPath -NoTypeInformation -Encoding UTF8BOM
             Write-Host "      导出 $($replicatedItems.Count) 条Replicated Item记录到 $replicatedItemsPath" -ForegroundColor Green
@@ -371,10 +371,10 @@ if ($config.TestRSVName) {
         else {
             Write-Host "      没有Replicated Item记录" -ForegroundColor Yellow
         }
-        
+
         # 关闭数据库连接
         Close-RSVDatabase
-        
+
         Write-Host "  CSV导出成功" -ForegroundColor Green
     }
     catch {
@@ -394,11 +394,11 @@ Write-Host "步骤 7: 显示采集结果..." -ForegroundColor Yellow
 
 if (Test-Path $config.DatabasePath) {
     Write-Host "数据库文件: $($config.DatabasePath)" -ForegroundColor White
-    
+
     # 获取数据库大小
     $dbSize = (Get-Item $config.DatabasePath).Length / 1MB
     Write-Host "数据库大小: $([math]::Round($dbSize, 2)) MB" -ForegroundColor White
-    
+
     # 显示数据摘要
     Write-Host ""
     Write-Host "数据摘要:" -ForegroundColor Cyan

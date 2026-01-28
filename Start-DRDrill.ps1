@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     快速启动Azure灾难演练脚本
 
@@ -69,7 +69,7 @@ Write-Host ""
 Write-Host "步骤 4: 初始化Azure会话..." -ForegroundColor Yellow
 try {
     $sessionResult = Initialize-AzureSession -Config $configHashTable -Interactive
-    
+
     if (-not $sessionResult.Success) {
         Write-Host "Azure会话初始化失败: $($sessionResult.Message)" -ForegroundColor Red
         exit 1
@@ -135,7 +135,7 @@ try {
     if ($whatIf) {
         $params["WhatIf"] = $true
     }
-    
+
     & ".\Azure-DR-Drill.ps1" @params
 }
 catch {

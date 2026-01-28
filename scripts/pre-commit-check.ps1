@@ -1,10 +1,6 @@
 ﻿# Pre-commit检查脚本
 # 用于在提交代码前自动检查代码质量
 
-param(
-    [switch]$Verbose
-)
-
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Pre-commit代码检查" -ForegroundColor Cyan
@@ -21,9 +17,9 @@ $psm1Files = Get-ChildItem -Path . -Filter "*.psm1" -Recurse | Where-Object { $_
 
 $encodingErrors = 0
 foreach ($file in ($ps1Files + $psm1Files)) {
-    $content = Get-Content $file.FullName -Raw -Encoding Byte -ErrorAction SilentlyContinue
-    if ($content -and $content.Count -ge 3) {
-        if ($content[0] -ne 0xEF -or $content[1] -ne 0xBB -or $content[2] -ne 0xBF) {
+    $bytes = [System.IO.File]::ReadAllBytes($file.FullName)
+    if ($bytes.Count -ge 3) {
+        if ($bytes[0] -ne 0xEF -or $bytes[1] -ne 0xBB -or $bytes[2] -ne 0xBF) {
             Write-Host "  ✗ $($file.FullName) 未使用UTF-8 BOM编码" -ForegroundColor Red
             $encodingErrors++
             $errors++
@@ -75,31 +71,31 @@ $builtInParams = @('Verbose', 'Debug', 'ErrorAction', 'WarningAction', 'Informat
 foreach ($file in ($ps1Files + $psm1Files)) {
     try {
         $ast = [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$null, [ref]$null)
-        
+
         # 获取所有参数定义
         $paramBlocks = $ast.FindAll({ $args[0] -is [System.Management.Automation.Language.ParamBlockAst] }, $true)
-        
+
         foreach ($paramBlock in $paramBlocks) {
             $paramNames = @()
-            
+
             # 检查每个参数
             foreach ($param in $paramBlock.Parameters) {
                 $paramName = $param.Name.VariablePath.UserPath
-                
+
                 # 检查是否重复定义
                 if ($paramNames -contains $paramName) {
                     Write-Host "  ✗ $($file.FullName) 参数 '$paramName' 重复定义" -ForegroundColor Red
                     $paramDuplicateErrors++
                     $errors++
                 }
-                
+
                 # 检查是否定义了PowerShell内置参数
                 if ($builtInParams -contains $paramName) {
                     Write-Host "  ✗ $($file.FullName) 定义了PowerShell内置参数 '$paramName'" -ForegroundColor Red
                     $paramDuplicateErrors++
                     $errors++
                 }
-                
+
                 $paramNames += $paramName
             }
         }
@@ -146,7 +142,7 @@ $sensitivePatterns = @(
 )
 
 $sensitiveErrors = 0
-$allFiles = Get-ChildItem -Path . -Include "*.ps1","*.psm1","*.txt","*.json","*.yml","*.yaml" -Recurse | 
+$allFiles = Get-ChildItem -Path . -Include "*.ps1","*.psm1","*.txt","*.json","*.yml","*.yaml" -Recurse |
     Where-Object { $_.FullName -notlike "*\node_modules\*" -and $_.FullName -notlike "*\.git\*" -and $_.FullName -notlike "*\cache\*" }
 
 foreach ($file in $allFiles) {
@@ -201,7 +197,7 @@ foreach ($file in ($ps1Files + $psm1Files)) {
         # 检查是否有Azure命令但没有try-catch
         $hasAzureCmd = $content -match '(Get-Az|Set-Az|New-Az|Remove-Az|Connect-Az|Select-Az)'
         $hasTryCatch = $content -match 'try\s*\{'
-        
+
         if ($hasAzureCmd -and -not $hasTryCatch) {
             Write-Host "  ⚠ $($file.FullName) 包含Azure命令但缺少try-catch块" -ForegroundColor Yellow
             $errorHandlingWarnings++
@@ -292,7 +288,7 @@ else {
         Write-Host "⚠ 发现 $warnings 个警告" -ForegroundColor Yellow
     }
     Write-Host ""
-    
+
     if ($errors -gt 0) {
         Write-Host "请修复错误后再提交代码" -ForegroundColor Red
         exit 1

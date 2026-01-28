@@ -87,6 +87,10 @@ function Test-SQLiteModule {
         
         try {
             Install-Module -Name SQLite -Scope CurrentUser -Force -ErrorAction Stop
+            
+            # 安装后立即导入模块
+            Import-Module -Name SQLite -Force -ErrorAction Stop
+            
             Write-RSVLog "SQLite模块安装成功" -Level "INFO"
             return $true
         }

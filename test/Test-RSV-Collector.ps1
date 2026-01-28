@@ -319,7 +319,7 @@ if ($config.TestRSVName) {
         $backupVMs = Get-RSVData -DataType "BackupVM" -Filter "RSVName = '$($config.TestRSVName)'" -OrderBy "CollectionTime DESC"
         
         if ($backupVMs -and $backupVMs.Count -gt 0) {
-            $backupVMs | Export-Csv -Path $backupVMsPath -NoTypeInformation -Encoding UTF8
+            $backupVMs | Export-Csv -Path $backupVMsPath -NoTypeInformation -Encoding UTF8BOM
             Write-Host "      导出 $($backupVMs.Count) 条Backup VM记录到 $backupVMsPath" -ForegroundColor Green
         }
         else {
@@ -331,7 +331,7 @@ if ($config.TestRSVName) {
         $replicatedItems = Get-RSVData -DataType "ReplicatedItem" -Filter "RSVName = '$($config.TestRSVName)'" -OrderBy "CollectionTime DESC"
         
         if ($replicatedItems -and $replicatedItems.Count -gt 0) {
-            $replicatedItems | Export-Csv -Path $replicatedItemsPath -NoTypeInformation -Encoding UTF8
+            $replicatedItems | Export-Csv -Path $replicatedItemsPath -NoTypeInformation -Encoding UTF8BOM
             Write-Host "      导出 $($replicatedItems.Count) 条Replicated Item记录到 $replicatedItemsPath" -ForegroundColor Green
         }
         else {

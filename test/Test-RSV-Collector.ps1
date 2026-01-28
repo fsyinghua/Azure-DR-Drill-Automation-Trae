@@ -306,11 +306,12 @@ if ($config.TestRSVName) {
         New-Item -ItemType Directory -Path $config.ExportPath -Force | Out-Null
     }
     
-    # 生成Excel文件名
+    # 生成CSV文件名
     $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-    $excelPath = Join-Path $config.ExportPath "RSV-Config-$($config.TestRSVName)-$timestamp.xlsx"
+    $backupVMsPath = Join-Path $config.ExportPath "BackupVMs-$($config.TestRSVName)-$timestamp.csv"
+    $replicatedItemsPath = Join-Path $config.ExportPath "ReplicatedItems-$($config.TestRSVName)-$timestamp.csv"
     
-    Write-Host "  导出路径: $excelPath" -ForegroundColor White
+    Write-Host "  导出路径: $backupVMsPath" -ForegroundColor White
     
     try {
         # 导出Backup VMs
@@ -318,8 +319,8 @@ if ($config.TestRSVName) {
         $backupVMs = Get-RSVData -DataType "BackupVM" -Filter "RSVName = '$($config.TestRSVName)'" -OrderBy "CollectionTime DESC"
         
         if ($backupVMs -and $backupVMs.Count -gt 0) {
-            $backupVMs | Export-Excel -Path $excelPath -WorksheetName "BackupVMs" -AutoSize -AutoFilter -FreezeTopRow
-            Write-Host "      导出 $($backupVMs.Count) 条Backup VM记录" -ForegroundColor Green
+            $backupVMs | Export-Csv -Path $backupVMsPath -NoTypeInformation -Encoding UTF8
+            Write-Host "      导出 $($backupVMs.Count) 条Backup VM记录到 $backupVMsPath" -ForegroundColor Green
         }
         else {
             Write-Host "      没有Backup VM记录" -ForegroundColor Yellow
@@ -330,50 +331,17 @@ if ($config.TestRSVName) {
         $replicatedItems = Get-RSVData -DataType "ReplicatedItem" -Filter "RSVName = '$($config.TestRSVName)'" -OrderBy "CollectionTime DESC"
         
         if ($replicatedItems -and $replicatedItems.Count -gt 0) {
-            $replicatedItems | Export-Excel -Path $excelPath -WorksheetName "ReplicatedItems" -AutoSize -AutoFilter -FreezeTopRow
-            Write-Host "      导出 $($replicatedItems.Count) 条Replicated Item记录" -ForegroundColor Green
+            $replicatedItems | Export-Csv -Path $replicatedItemsPath -NoTypeInformation -Encoding UTF8
+            Write-Host "      导出 $($replicatedItems.Count) 条Replicated Item记录到 $replicatedItemsPath" -ForegroundColor Green
         }
         else {
             Write-Host "      没有Replicated Item记录" -ForegroundColor Yellow
         }
         
-        # 添加RSV信息工作表
-        Write-Host "    添加RSV信息..." -ForegroundColor White
-        $testRSVInfo = $config.AllRSVs | Where-Object { $_.RSVName -eq $config.TestRSVName }
-        if ($testRSVInfo) {
-            $rsvInfoData = @(
-                [PSCustomObject]@{
-                    属性 = "RSV名称"
-                    值 = $testRSVInfo.RSVName
-                },
-                [PSCustomObject]@{
-                    属性 = "订阅名称"
-                    值 = $testRSVInfo.SubscriptionName
-                },
-                [PSCustomObject]@{
-                    属性 = "订阅ID"
-                    值 = $testRSVInfo.SubscriptionId
-                },
-                [PSCustomObject]@{
-                    属性 = "资源组"
-                    值 = $testRSVInfo.ResourceGroupName
-                },
-                [PSCustomObject]@{
-                    属性 = "位置"
-                    值 = $testRSVInfo.Location
-                },
-                [PSCustomObject]@{
-                    属性 = "采集时间"
-                    值 = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-                }
-            )
-            $rsvInfoData | Export-Excel -Path $excelPath -WorksheetName "RSV信息" -AutoSize -AutoFilter
-        }
-        
-        Write-Host "  Excel导出成功: $excelPath" -ForegroundColor Green
+        Write-Host "  CSV导出成功" -ForegroundColor Green
     }
     catch {
-        Write-Host "  Excel导出失败: $_" -ForegroundColor Red
+        Write-Host "  CSV导出失败: $_" -ForegroundColor Red
     }
 }
 else {

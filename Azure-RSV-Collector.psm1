@@ -858,6 +858,11 @@ function Get-RSVData {
     )
     
     try {
+        if (-not $Script:DatabaseConnection) {
+            Write-RSVLog "数据库连接未打开" -Level "ERROR"
+            return @()
+        }
+        
         $whereClause = ""
         if ($DataType -ne "All") {
             $whereClause = "WHERE data_type = '$DataType'"
@@ -906,6 +911,11 @@ function Get-RSVDataSummary {
     #>
     try {
         Write-RSVLog "获取数据摘要" -Level "INFO"
+        
+        if (-not $Script:DatabaseConnection) {
+            Write-RSVLog "数据库连接未打开" -Level "ERROR"
+            return @{}
+        }
         
         # 统计各类型数据数量
         $summary = @{}

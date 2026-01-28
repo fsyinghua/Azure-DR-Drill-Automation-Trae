@@ -1,4 +1,4 @@
-# 安装System.Data.SQLite DLL
+﻿# 安装System.Data.SQLite DLL
 
 $ErrorActionPreference = "Stop"
 

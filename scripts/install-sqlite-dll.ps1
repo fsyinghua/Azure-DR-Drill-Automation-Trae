@@ -45,7 +45,8 @@ try {
     # 显示解压后的目录结构
     Write-Host "  解压后的目录结构:" -ForegroundColor Gray
     Get-ChildItem $extractPath -Recurse -Directory | Select-Object -First 10 | ForEach-Object {
-        Write-Host "    $($_.FullName.Replace("$extractPath\", ""))" -ForegroundColor DarkGray
+        $relativePath = $_.FullName.Replace($extractPath + "\", "")
+        Write-Host "    $relativePath" -ForegroundColor DarkGray
     }
     
     # 尝试多个可能的DLL路径

@@ -1,5 +1,9 @@
-﻿# 远端环境检查脚本
+# 远端环境检查脚本
 # 用于验证远端机器是否满足运行Azure DR Drill Automation脚本的要求
+
+param(
+    [switch]$SkipAzureLogin
+)
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
@@ -25,6 +29,23 @@ Write-Host ""
 # 检查Az模块
 Write-Host "[2] Az PowerShell模块" -ForegroundColor Yellow
 $azModule = Get-Module -ListAvailable -Name Az | Select-Object -First 1
+
+# 如果ListAvailable找不到，尝试检查已加载的模块
+if (-not $azModule) {
+    $azModule = Get-Module -Name Az -ErrorAction SilentlyContinue | Select-Object -First 1
+}
+
+# 如果还是找不到，尝试检查是否有Az命令
+if (-not $azModule) {
+    $azCommands = Get-Command -Module Az* -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($azCommands) {
+        $azModule = [PSCustomObject]@{
+            Name = "Az"
+            Version = "已加载"
+        }
+    }
+}
+
 if ($azModule) {
     Write-Host "  ✓ Az模块已安装" -ForegroundColor Green
     Write-Host "  版本: $($azModule.Version)" -ForegroundColor White
@@ -100,27 +121,34 @@ foreach ($endpoint in $endpoints) {
 }
 Write-Host ""
 
-# 检查Azure登录状态
-Write-Host "[6] Azure登录状态" -ForegroundColor Yellow
-try {
-    $context = Get-AzContext -ErrorAction Stop
-    if ($context) {
-        Write-Host "  ✓ 已登录" -ForegroundColor Green
-        Write-Host "  账户: $($context.Account.Id)" -ForegroundColor White
-        Write-Host "  订阅: $($context.Subscription.Name)" -ForegroundColor White
+# 检查Azure登录状态（可选）
+if (-not $SkipAzureLogin) {
+    Write-Host "[6] Azure登录状态" -ForegroundColor Yellow
+    try {
+        $context = Get-AzContext -ErrorAction Stop
+        if ($context) {
+            Write-Host "  ✓ 已登录" -ForegroundColor Green
+            Write-Host "  账户: $($context.Account.Id)" -ForegroundColor White
+            Write-Host "  订阅: $($context.Subscription.Name)" -ForegroundColor White
+        }
+        else {
+            Write-Host "  ✗ 未登录" -ForegroundColor Red
+            Write-Host "  请运行: Connect-AzAccount -UseDeviceAuthentication" -ForegroundColor Yellow
+            $allPassed = $false
+        }
     }
-    else {
+    catch {
         Write-Host "  ✗ 未登录" -ForegroundColor Red
         Write-Host "  请运行: Connect-AzAccount -UseDeviceAuthentication" -ForegroundColor Yellow
         $allPassed = $false
     }
+    Write-Host ""
 }
-catch {
-    Write-Host "  ✗ 未登录" -ForegroundColor Red
-    Write-Host "  请运行: Connect-AzAccount -UseDeviceAuthentication" -ForegroundColor Yellow
-    $allPassed = $false
+else {
+    Write-Host "[6] Azure登录状态" -ForegroundColor Yellow
+    Write-Host "  ⊘ 已跳过（使用 -SkipAzureLogin 参数）" -ForegroundColor Gray
+    Write-Host ""
 }
-Write-Host ""
 
 Write-Host "========================================" -ForegroundColor Cyan
 if ($allPassed) {

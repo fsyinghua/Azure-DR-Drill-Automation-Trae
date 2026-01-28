@@ -1410,6 +1410,10 @@ function Test-SQLiteModule {
 - 直接引用程序集中的类型，让PowerShell自动加载程序集
 - 在测试函数中直接使用类型（如`[System.Data.SQLite.SQLiteConnection]`）来验证程序集是否可用
 - 确保系统已安装System.Data.SQLite程序集
+- ⚠️ **远程机器配置**: 在远程机器上运行脚本前，必须确保已安装System.Data.SQLite程序集
+- 在远程机器上运行`Install-Module -Name PSSQLite -Scope CurrentUser -Force`安装SQLite模块
+- 或使用`Install-Module -Name System.Data.SQLite -Scope CurrentUser -Force`安装System.Data.SQLite NuGet包
+- 开发机器和远程机器的环境配置可能不同，需要在远程机器上单独安装依赖
 
 **相关代码**: [Azure-RSV-Collector.psm1](file:///d:/UserProfiles/JoeHe/Codes/Azure-DR-Drill-Automation-Trae/Azure-RSV-Collector.psm1#L80-L88)
 

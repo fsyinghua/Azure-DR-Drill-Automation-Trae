@@ -42,6 +42,9 @@ $utf8BOM = New-Object System.Text.UTF8Encoding $true
 - 直接引用程序集中的类型，让PowerShell自动加载程序集
 - 在测试函数中直接使用类型（如`[System.Data.SQLite.SQLiteConnection]`）来验证程序集是否可用
 - 模块检测使用多方法：已加载模块、读取manifest文件、Get-Module -ListAvailable
+- ⚠️ **远程机器配置**: 在远程机器上运行脚本前，必须确保已安装System.Data.SQLite程序集
+- 在远程机器上运行`Install-Module -Name PSSQLite -Scope CurrentUser -Force`安装SQLite模块
+- 或使用`Install-Module -Name System.Data.SQLite -Scope CurrentUser -Force`安装System.Data.SQLite NuGet包
 
 ### 2.2 模块导出
 - 所有公共函数必须在`Export-ModuleMember`中声明

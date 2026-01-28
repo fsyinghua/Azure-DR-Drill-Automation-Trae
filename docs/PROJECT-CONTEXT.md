@@ -203,7 +203,12 @@ Azure-DR-Drill-Automation-Trae/
 **错误**: 使用LoadWithPartialName加载程序集失败
 **解决**: 直接引用程序集中的类型，让PowerShell自动加载程序集
 
-### 3. 数据库连接为null
+### 3. 远程机器SQLite环境配置
+**错误**: 远程机器上System.Data.SQLite程序集未安装
+**解决**: 在远程机器上运行`Install-Module -Name PSSQLite -Scope CurrentUser -Force`或`Install-Module -Name System.Data.SQLite -Scope CurrentUser -Force`安装SQLite模块
+**注意**: 开发机器和远程机器的环境配置可能不同，需要在远程机器上单独安装依赖
+
+### 4. 数据库连接为null
 **错误**: 数据库操作时连接未打开
 **解决**: 在所有数据库操作前检查`$Script:DatabaseConnection`
 

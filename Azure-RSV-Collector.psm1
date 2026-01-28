@@ -358,7 +358,7 @@ function Get-RSVBackupVMs {
         }
         
         # 获取Backup容器
-        $containers = Get-AzRecoveryServicesBackupContainer -VaultId $rsv.ID -ErrorAction SilentlyContinue
+        $containers = Get-AzRecoveryServicesBackupContainer -VaultId $rsv.ID -ContainerType "AzureVM" -ErrorAction SilentlyContinue
         
         if (-not $containers) {
             Write-RSVLog "未找到Backup容器" -Level "WARNING"

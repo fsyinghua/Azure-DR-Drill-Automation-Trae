@@ -81,6 +81,12 @@ $utf8BOM = New-Object System.Text.UTF8Encoding $true
 - ⚠️ **远程机器配置**: 在远程机器上运行脚本前，必须确保已安装System.Data.SQLite程序集
 - 在远程机器上运行`Install-Module -Name PSSQLite -Scope CurrentUser -Force`安装SQLite模块
 - 或使用`Install-Module -Name System.Data.SQLite -Scope CurrentUser -Force`安装System.Data.SQLite NuGet包
+- ⚠️ **手动安装**: 如果无法通过NuGet安装，可以手动下载System.Data.SQLite.dll
+- 运行`scripts/install-sqlite-dll.ps1`自动下载并安装System.Data.SQLite.dll
+- 或手动从https://www.nuget.org/packages/System.Data.SQLite/下载.nupkg文件
+- 解压.nupkg文件，将System.Data.SQLite.dll复制到lib目录
+- Test-SQLiteModule函数会优先检查lib目录下的DLL，如果没有则尝试加载全局程序集
+- ⚠️ **重要区别**: SQLite PowerShell模块（提供mount-sqlite命令）和System.Data.SQLite（.NET程序集）是不同的东西，不能互相替代
 
 ### 2.2 模块导出
 - 所有公共函数必须在`Export-ModuleMember`中声明
@@ -356,6 +362,7 @@ $utf8BOM = New-Object System.Text.UTF8Encoding $true
 
 | 版本 | 日期 | 变更说明 | 作者 |
 |------|------|---------|------|
+| 1.2.0 | 2026-01-28 | 添加System.Data.SQLite手动安装规则 | Azure DR Team |
 | 1.1.0 | 2026-01-28 | 合并project_rules.md到project-rules.md，统一项目规则文档 | Azure DR Team |
 | 1.0.0 | 2026-01-28 | 初始版本，定义项目规则和审查标准 | Azure DR Team |
 

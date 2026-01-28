@@ -77,7 +77,8 @@ $utf8BOM = New-Object System.Text.UTF8Encoding $true
 
 ### 4.2 ASR命令
 - ⚠️ **重要**: 使用ASR命令前必须先导入Vault上下文
-- 使用`Set-AzRecoveryServicesAsrVaultContext`导入Vault设置
+- 使用`Set-AzRecoveryServicesAsrVaultContext -Vault $rsv`导入Vault设置
+- ⚠️ **禁止**: 不要使用`-DefaultProfile`参数，这是错误的参数
 - ASR命令名称：`Get-AzRecoveryServicesAsrFabric`、`Get-AzRecoveryServicesAsrProtectableItem`等
 
 ### 4.3 Backup命令

@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Azure RSV配置采集模块 - 提供Recovery Services Vault配置和状态采集功能
 
@@ -598,8 +598,7 @@ function Get-RSVReplicatedItems {
         # 获取Fabric
         # 导入Vault设置
         try {
-            $context = Get-AzContext
-            $null = Set-AzRecoveryServicesAsrVaultContext -DefaultProfile $context -ErrorAction SilentlyContinue
+            $null = Set-AzRecoveryServicesAsrVaultContext -Vault $rsv -ErrorAction SilentlyContinue
         }
         catch {
             Write-RSVLog "导入Vault设置失败: $_" -Level "WARNING"

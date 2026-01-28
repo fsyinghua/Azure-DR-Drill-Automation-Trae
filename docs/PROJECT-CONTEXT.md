@@ -219,15 +219,19 @@ Azure-DR-Drill-Automation-Trae/
 **错误**: Get-AzRecoveryServicesFabric命令不存在
 **解决**: 使用Get-AzRecoveryServicesAsrFabric，并导入Vault上下文
 
-### 7. DateTime解析错误
+### 7. Set-AzRecoveryServicesAsrVaultContext参数错误
+**错误**: Set-AzRecoveryServicesAsrVaultContext缺少Vault参数
+**解决**: 使用`Set-AzRecoveryServicesAsrVaultContext -Vault $rsv`，不要使用`-DefaultProfile`参数
+
+### 8. DateTime解析错误
 **错误**: DBNull值导致DateTime解析失败
 **解决**: 检查DBNull值：`if ($value -ne [System.DBNull]::Value) { [DateTime]::Parse($value) }`
 
-### 8. RSV自动发现慢
+### 9. RSV自动发现慢
 **错误**: 每次都重新发现RSV
 **解决**: 使用数据库缓存RSV列表
 
-### 9. 数据库初始化顺序错误
+### 10. 数据库初始化顺序错误
 **错误**: 读取RSV列表前数据库未初始化
 **解决**: 先调用Initialize-RSVDatabase，再调用Get-RSVListFromDatabase
 

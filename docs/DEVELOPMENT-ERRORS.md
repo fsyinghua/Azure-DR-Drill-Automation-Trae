@@ -1318,6 +1318,52 @@ if ($config.RSVList.Count -eq 0) {
 
 ---
 
+### 7.12 Set-AzRecoveryServicesAsrVaultContext缺少Vault参数
+
+**错误信息**:
+```
+cmdlet Set-AzRecoveryServicesAsrVaultContext at command pipeline position 1
+Supply values for the following parameters:
+Vault:
+```
+
+**发生场景**: 采集Replicated Items时，设置ASR Vault上下文
+
+**根本原因**: 
+- Set-AzRecoveryServicesAsrVaultContext命令缺少必需的-Vault参数
+- 使用了错误的参数组合（-DefaultProfile而不是-Vault）
+- 参数类型不匹配（传递了Azure上下文对象而不是RSV对象）
+
+**修正方案**:
+```powershell
+# 修改前
+try {
+    $context = Get-AzContext
+    $null = Set-AzRecoveryServicesAsrVaultContext -DefaultProfile $context -ErrorAction SilentlyContinue
+}
+catch {
+    Write-RSVLog "导入Vault设置失败: $_" -Level "WARNING"
+}
+
+# 修改后
+try {
+    $null = Set-AzRecoveryServicesAsrVaultContext -Vault $rsv -ErrorAction SilentlyContinue
+}
+catch {
+    Write-RSVLog "导入Vault设置失败: $_" -Level "WARNING"
+}
+```
+
+**预防措施**:
+- ⚠️ **重要**: Set-AzRecoveryServicesAsrVaultContext必须使用-Vault参数，传递RSV对象
+- 不要使用-DefaultProfile参数，这是错误的参数
+- 在调用前确保已经获取了RSV对象
+- 添加错误处理，避免因Vault上下文设置失败导致整个采集流程中断
+
+**相关代码**: [Azure-RSV-Collector.psm1](file:///d:/UserProfiles/JoeHe/Codes/Azure-DR-Drill-Automation-Trae/Azure-RSV-Collector.psm1#L599-L606)
+
+---
+
 ## 学习要点
 
 1. **类型设计**: 使用`[object]`而不是具体类型，提高兼容性
@@ -1341,6 +1387,7 @@ if ($config.RSVList.Count -eq 0) {
 |------|------|---------|------|
 | 1.0.0 | 2026-01-28 | 初始版本，记录开发过程中的错误和修正方案 | Azure DR Team |
 | 1.1.0 | 2026-01-28 | 添加RSV采集错误记录（7.1-7.11） | Azure DR Team |
+| 1.2.0 | 2026-01-28 | 添加Set-AzRecoveryServicesAsrVaultContext缺少Vault参数错误（7.12） | Azure DR Team |
 
 ---
 

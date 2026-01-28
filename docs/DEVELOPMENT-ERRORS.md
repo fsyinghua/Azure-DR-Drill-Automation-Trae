@@ -216,6 +216,51 @@ $utf8BOM = New-Object System.Text.UTF8Encoding $true
 
 ---
 
+### 2.4 PowerShell参数重复定义
+
+**错误信息**:
+```
+.\test\Test-RSV-Collector.ps1 : A parameter with the name 'Verbose' was defined multiple times for the command.
+At line:1 char:1
++ .\test\Test-RSV-Collector.ps1 -WhatIf
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : MetadataError: (:) [], MetadataException
+    + FullyQualifiedErrorId : ParameterNameAlreadyExistsForCommand
+```
+
+**发生场景**: 运行测试脚本时
+
+**根本原因**: 
+- 自定义了`Verbose`参数，但PowerShell内置了该参数
+- PowerShell内置参数包括：Verbose, Debug, ErrorAction, WarningAction, InformationAction等
+
+**修正方案**:
+```powershell
+# 错误示例
+param(
+    [Parameter(Mandatory = $false)]
+    [switch]$WhatIf,
+    
+    [Parameter(Mandatory = $false)]
+    [switch]$Verbose  # ❌ 重复定义
+)
+
+# 正确示例
+param(
+    [Parameter(Mandatory = $false)]
+    [switch]$WhatIf  # ✅ 只定义自定义参数
+)
+```
+
+**预防措施**:
+- ⚠️ **重要**: 不要定义PowerShell内置参数（Verbose, Debug, ErrorAction等）
+- 在定义参数前检查是否为PowerShell内置参数
+- 使用`Get-Command -Syntax`查看命令的参数列表
+
+**相关文档**: [about_CommonParameters](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_commonparameters)
+
+---
+
 ## 三、模块检测问题
 
 ### 3.1 模块检测失败（已安装但未检测到）

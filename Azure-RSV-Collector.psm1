@@ -458,7 +458,8 @@ function Get-RSVReplicatedItems {
         # 获取Fabric
         # 导入Vault设置
         try {
-            $null = Set-AzRecoveryServicesAsrVaultContext -DefaultProfile $rsv.Name -ErrorAction SilentlyContinue
+            $context = Get-AzContext
+            $null = Set-AzRecoveryServicesAsrVaultContext -DefaultProfile $context -ErrorAction SilentlyContinue
         }
         catch {
             Write-RSVLog "导入Vault设置失败: $_" -Level "WARNING"

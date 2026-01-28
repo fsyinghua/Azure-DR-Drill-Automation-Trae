@@ -314,6 +314,13 @@ if ($config.TestRSVName) {
     Write-Host "  导出路径: $backupVMsPath" -ForegroundColor White
     
     try {
+        # 重新打开数据库连接
+        $dbInitialized = Initialize-RSVDatabase -DatabasePath $config.DatabasePath
+        if (-not $dbInitialized) {
+            Write-Host "  数据库初始化失败" -ForegroundColor Red
+            return
+        }
+        
         # 导出Backup VMs
         Write-Host "    导出Backup VMs..." -ForegroundColor White
         $backupVMs = Get-RSVData -DataType "BackupVM" -Filter "RSVName = '$($config.TestRSVName)'" -OrderBy "CollectionTime DESC"
@@ -337,6 +344,9 @@ if ($config.TestRSVName) {
         else {
             Write-Host "      没有Replicated Item记录" -ForegroundColor Yellow
         }
+        
+        # 关闭数据库连接
+        Close-RSVDatabase
         
         Write-Host "  CSV导出成功" -ForegroundColor Green
     }

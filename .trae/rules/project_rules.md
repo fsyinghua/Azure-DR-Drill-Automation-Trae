@@ -43,6 +43,14 @@
    git push
    ```
 
+4. **远端环境准备提醒**：
+   - ⚠️ **重要**: 如果需要在远端机器运行，请确保已准备以下环境：
+     - 安装Az PowerShell模块：`Install-Module -Name Az -Scope CurrentUser -Force`
+     - 安装System.Data.SQLite：运行 `.\scripts\install-sqlite-dll.ps1`
+     - 检查目录权限：运行 `.\scripts\check-environment.ps1`
+     - 登录Azure：`Connect-AzAccount -UseDeviceAuthentication`
+   - 详细说明请参考：`docs/REMOTE-ENVIRONMENT.md`
+
 **重要**：不要遗漏任何文档更新，确保代码和文档同步。
 
 ---

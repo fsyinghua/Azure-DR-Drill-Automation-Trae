@@ -456,10 +456,84 @@ function Get-RSVReplicatedItems {
         }
         
         # 获取Fabric
-        # 注意: Get-AzRecoveryServicesFabric 命令可能不存在，需要ASR模块
-        # 暂时跳过Replicated Items采集
-        Write-RSVLog "Replicated Items采集功能需要ASR模块，暂时跳过" -Level "WARNING"
-        return @()
+        # 导入Vault设置
+        try {
+            $null = Set-AzRecoveryServicesAsrVaultContext -DefaultProfile $rsv.Name -ErrorAction SilentlyContinue
+        }
+        catch {
+            Write-RSVLog "导入Vault设置失败: $_" -Level "WARNING"
+        }
+        
+        # 获取Fabric
+        $fabrics = Get-AzRecoveryServicesAsrFabric -ErrorAction SilentlyContinue
+        
+        if (-not $fabrics) {
+            Write-RSVLog "未找到Fabric，跳过Replicated Items采集" -Level "WARNING"
+            return @()
+        }
+        
+        $replicatedItems = @()
+        
+        foreach ($fabric in $fabrics) {
+            # 获取保护容器
+            $containers = Get-AzRecoveryServicesAsrProtectableItem -ProtectionContainer $fabric -ErrorAction SilentlyContinue
+            
+            foreach ($container in $containers) {
+                # 获取Replicated Items
+                $items = Get-AzRecoveryServicesAsrReplicationProtectedItem -ProtectionContainer $container -ErrorAction SilentlyContinue
+                
+                foreach ($item in $items) {
+                    $replicatedItem = @{
+                        DataType = "ReplicatedItem"
+                        CollectorName = "ReplicatedItemCollector"
+                        CollectionTime = (Get-Date).ToUniversalTime().ToString("o")
+                        CollectionVersion = $Script:RSVCollectorVersion
+                        
+                        Data = @{
+                            RSVName = $RSVName
+                            VMName = $item.FriendlyName
+                            VMId = $item.ID
+                            SourceResourceGroup = $item.PrimaryFabricFriendlyName
+                            SourceLocation = $item.PrimaryLocation
+                            SourceNetwork = if ($item.PrimaryNetworkFriendlyName) { $item.PrimaryNetworkFriendlyName } else { $null }
+                            SourceSubnet = if ($item.PrimarySubnetFriendlyName) { $item.PrimarySubnetFriendlyName } else { $null }
+                            TargetResourceGroup = $item.RecoveryFabricFriendlyName
+                            TargetLocation = $item.RecoveryLocation
+                            TargetNetwork = if ($item.RecoveryNetworkFriendlyName) { $item.RecoveryNetworkFriendlyName } else { $null }
+                            TargetSubnet = if ($item.RecoverySubnetFriendlyName) { $item.RecoverySubnetFriendlyName } else { $null }
+                            TargetVMName = $item.RecoveryAzureVmId
+                            ASRStatus = $item.ProtectionState
+                            FailoverState = $item.ActiveLocation
+                            CommitState = $item.ActiveLocation
+                            ReprotectState = $item.ActiveLocation
+                            FallbackState = $item.ActiveLocation
+                            Status = $item.ProtectionState
+                            Health = $item.ProtectionState
+                            LastSuccessfulReplicationTime = if ($item.LastSuccessfulReplicationTime) { $item.LastSuccessfulReplicationTime.ToString("o") } else { $null }
+                            RecoveryPoint = if ($item.RecoveryPointId) { $item.RecoveryPointId } else { $null }
+                            RPO = if ($item.RecoveryPointTime) { $item.RecoveryPointTime } else { $null }
+                            TestFailoverState = $item.TestFailoverState
+                            ReplicationProgress = if ($item.ReplicationProgressPercentage) { $item.ReplicationProgressPercentage } else { $null }
+                            DataTransferRateMBps = if ($item.DataTransferInMBps) { $item.DataTransferInMBps } else { $null }
+                        }
+                        
+                        Metadata = @{
+                            Source = "Azure"
+                            Region = $item.PrimaryLocation
+                            SubscriptionId = (Get-AzContext).Subscription.Id
+                            Tags = if ($item.Tags) { $item.Tags } else { @{} }
+                        }
+                    }
+                    
+                    $replicatedItems += $replicatedItem
+                    Write-RSVLog "  采集Replicated Item: $($item.FriendlyName)" -Level "INFO"
+                }
+            }
+        }
+        
+        Write-RSVLog "完成采集Replicated Items: $($replicatedItems.Count) 个" -Level "INFO"
+        
+        return $replicatedItems
     }
     catch {
         Write-RSVLog "采集Replicated Items失败: $_" -Level "ERROR"

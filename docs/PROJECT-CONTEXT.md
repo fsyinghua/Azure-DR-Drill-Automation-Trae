@@ -199,39 +199,43 @@ Azure-DR-Drill-Automation-Trae/
 **错误**: 使用Invoke-SqliteQuery等SQLite模块命令
 **解决**: 直接使用System.Data.SQLite程序集
 
-### 2. 数据库连接为null
+### 2. SQLite程序集加载失败
+**错误**: 使用LoadWithPartialName加载程序集失败
+**解决**: 直接引用程序集中的类型，让PowerShell自动加载程序集
+
+### 3. 数据库连接为null
 **错误**: 数据库操作时连接未打开
 **解决**: 在所有数据库操作前检查`$Script:DatabaseConnection`
 
-### 3. Export-Excel命令不存在
+### 4. Export-Excel命令不存在
 **错误**: 使用Export-Excel命令
 **解决**: 使用Export-Csv代替，并添加`-Encoding UTF8BOM`
 
-### 4. CSV编码问题
+### 5. CSV编码问题
 **错误**: CSV文件编码不正确
 **解决**: Export-Csv必须使用UTF8BOM编码
 
-### 5. Azure cmdlet参数错误
+### 6. Azure cmdlet参数错误
 **错误**: Get-AzRecoveryServicesBackupContainer/Item参数缺失
 **解决**: 添加ContainerType和WorkloadType参数
 
-### 6. ASR命令错误
+### 7. ASR命令错误
 **错误**: Get-AzRecoveryServicesFabric命令不存在
 **解决**: 使用Get-AzRecoveryServicesAsrFabric，并导入Vault上下文
 
-### 7. Set-AzRecoveryServicesAsrVaultContext参数错误
+### 8. Set-AzRecoveryServicesAsrVaultContext参数错误
 **错误**: Set-AzRecoveryServicesAsrVaultContext缺少Vault参数
 **解决**: 使用`Set-AzRecoveryServicesAsrVaultContext -Vault $rsv`，不要使用`-DefaultProfile`参数
 
-### 8. DateTime解析错误
+### 9. DateTime解析错误
 **错误**: DBNull值导致DateTime解析失败
 **解决**: 检查DBNull值：`if ($value -ne [System.DBNull]::Value) { [DateTime]::Parse($value) }`
 
-### 9. RSV自动发现慢
+### 10. RSV自动发现慢
 **错误**: 每次都重新发现RSV
 **解决**: 使用数据库缓存RSV列表
 
-### 10. 数据库初始化顺序错误
+### 11. 数据库初始化顺序错误
 **错误**: 读取RSV列表前数据库未初始化
 **解决**: 先调用Initialize-RSVDatabase，再调用Get-RSVListFromDatabase
 

@@ -79,7 +79,7 @@ function Test-SQLiteModule {
         $result = Test-SQLiteModule
     #>
     try {
-        $null = [System.Reflection.Assembly]::LoadWithPartialName("System.Data.SQLite")
+        $null = [System.Data.SQLite.SQLiteConnection]
         return $true
     }
     catch {

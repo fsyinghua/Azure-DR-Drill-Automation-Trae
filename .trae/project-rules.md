@@ -38,6 +38,9 @@ $utf8BOM = New-Object System.Text.UTF8Encoding $true
 ### 2.1 模块检测
 - ⚠️ **禁止使用SQLite模块命令**: 不要使用`Invoke-SqliteQuery`、`New-SQLiteConnection`等
 - 使用System.Data.SQLite程序集直接操作SQLite数据库
+- ⚠️ **重要**: 不要使用`[System.Reflection.Assembly]::LoadWithPartialName`加载程序集
+- 直接引用程序集中的类型，让PowerShell自动加载程序集
+- 在测试函数中直接使用类型（如`[System.Data.SQLite.SQLiteConnection]`）来验证程序集是否可用
 - 模块检测使用多方法：已加载模块、读取manifest文件、Get-Module -ListAvailable
 
 ### 2.2 模块导出

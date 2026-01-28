@@ -1364,6 +1364,57 @@ catch {
 
 ---
 
+### 7.13 SQLite程序集加载失败
+
+**错误信息**:
+```
+[ERROR] 数据库初始化失败: Cannot find type [System.Data.SQLite.SQLiteConnection]: verify that the assembly containing this type is loaded.
+```
+
+**发生场景**: 初始化数据库时
+
+**根本原因**: 
+- 使用了`[System.Reflection.Assembly]::LoadWithPartialName("System.Data.SQLite")`加载程序集
+- LoadWithPartialName方法可能无法正确加载程序集
+- 程序集未被正确加载到内存中
+
+**修正方案**:
+```powershell
+# 修改前
+function Test-SQLiteModule {
+    try {
+        $null = [System.Reflection.Assembly]::LoadWithPartialName("System.Data.SQLite")
+        return $true
+    }
+    catch {
+        Write-RSVLog "System.Data.SQLite不可用: $_" -Level "WARNING"
+        return $false
+    }
+}
+
+# 修改后
+function Test-SQLiteModule {
+    try {
+        $null = [System.Data.SQLite.SQLiteConnection]
+        return $true
+    }
+    catch {
+        Write-RSVLog "System.Data.SQLite不可用: $_" -Level "WARNING"
+        return $false
+    }
+}
+```
+
+**预防措施**:
+- ⚠️ **重要**: 不要使用`[System.Reflection.Assembly]::LoadWithPartialName`加载程序集
+- 直接引用程序集中的类型，让PowerShell自动加载程序集
+- 在测试函数中直接使用类型（如`[System.Data.SQLite.SQLiteConnection]`）来验证程序集是否可用
+- 确保系统已安装System.Data.SQLite程序集
+
+**相关代码**: [Azure-RSV-Collector.psm1](file:///d:/UserProfiles/JoeHe/Codes/Azure-DR-Drill-Automation-Trae/Azure-RSV-Collector.psm1#L80-L88)
+
+---
+
 ## 学习要点
 
 1. **类型设计**: 使用`[object]`而不是具体类型，提高兼容性
@@ -1388,6 +1439,7 @@ catch {
 | 1.0.0 | 2026-01-28 | 初始版本，记录开发过程中的错误和修正方案 | Azure DR Team |
 | 1.1.0 | 2026-01-28 | 添加RSV采集错误记录（7.1-7.11） | Azure DR Team |
 | 1.2.0 | 2026-01-28 | 添加Set-AzRecoveryServicesAsrVaultContext缺少Vault参数错误（7.12） | Azure DR Team |
+| 1.3.0 | 2026-01-28 | 添加SQLite程序集加载失败错误（7.13） | Azure DR Team |
 
 ---
 

@@ -459,7 +459,7 @@ function Get-RSVReplicatedItems {
         $fabrics = Get-AzRecoveryServicesFabric -VaultId $rsv.ID -ErrorAction SilentlyContinue
         
         if (-not $fabrics) {
-            Write-RSVLog "未找到Fabric" -Level "WARNING"
+            Write-RSVLog "未找到Fabric，跳过Replicated Items采集" -Level "WARNING"
             return @()
         }
         
@@ -928,12 +928,16 @@ function Get-RSVDataSummary {
             $reader = $command.ExecuteReader()
             
             if ($reader.Read()) {
-                $summary[$type] = @{
-                    Count = $reader["count"]
-                    FirstCollectionTime = if ($reader["first_time"]) { [DateTime]::Parse($reader["first_time"]) } else { $null }
-                    LastCollectionTime = if ($reader["last_time"]) { [DateTime]::Parse($reader["last_time"]) } else { $null }
-                }
+                $count = $reader["count"]
+                $firstTime = $reader["first_time"]
+                $lastTime = $reader["last_time"]
                 $reader.Close()
+                
+                $summary[$type] = @{
+                    Count = $count
+                    FirstCollectionTime = if ($firstTime) { [DateTime]::Parse($firstTime) } else { $null }
+                    LastCollectionTime = if ($lastTime) { [DateTime]::Parse($lastTime) } else { $null }
+                }
             }
         }
         

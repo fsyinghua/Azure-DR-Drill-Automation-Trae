@@ -4,9 +4,9 @@
 
 **项目名称**: Azure 灾难恢复演练批量自动化脚本  
 **创建日期**: 2026-01-27  
-**当前版本**: 1.0.0  
+**当前版本**: 1.2.0  
 **负责人**: Azure DR Team  
-**状态**: 开发完成，待测试验证
+**状态**: 开发中（RSV配置采集模块）
 
 ---
 
@@ -27,6 +27,8 @@
 ## 二、功能需求
 
 ### 2.1 核心功能
+
+#### 2.1.1 DR演练流程
 为每台虚拟机实现完整的DR演练流程：
 
 ```
@@ -43,6 +45,52 @@
 6. Re-protect
 ```
 
+#### 2.1.2 RSV配置采集与存储
+采集Recovery Services Vault (RSV) 的配置和状态信息：
+
+**Backup虚拟机采集**：
+- 获取RSV中所有受保护的虚拟机
+- 采集备份状态（Healthy、Warning、Critical等）
+- 采集备份时间（最新备份时间、下次备份时间）
+- 采集备份策略信息
+- 采集备份大小和存储使用情况
+
+**Replicated Items采集**：
+- 获取RSV中所有复制的虚拟机
+- 采集复制映射关系：
+  - 源资源组
+  - 源服务器（虚拟机）
+  - 源网络
+  - 目标资源组
+  - 目标网络
+  - 目标服务器（虚拟机）
+- 采集ASR当前状态：
+  - Failover状态
+  - Commit状态
+  - Re-protect状态
+  - Fallback状态
+- 采集重要操作指标：
+  - Status（复制状态）
+  - Health（健康状态）
+  - LastSuccessfulReplicationTime（最后成功复制时间）
+  - RecoveryPoint（恢复点信息）
+  - RPO（恢复点目标）
+  - TestFailoverState（测试故障转移状态）
+  - ReplicationProgress（复制进度）
+  - DataTransferRate（数据传输速率）
+
+**数据存储**：
+- 使用SQLite数据库本地存储采集的数据
+- 支持增量采集插入机制
+- 记录采集时间戳，便于增量更新
+- 提供数据查询和导出功能
+
+**数据导出**：
+- 支持导出到Excel格式
+- 支持导出到CSV格式
+- 提供多种筛选和排序选项
+- 支持自定义导出字段
+
 ### 2.2 输入文件
 - **vmlist.txt**: 虚拟机列表（每行一个虚拟机名称）
 - **rsv.txt**: RSV恢复服务保管库列表（每行一个RSV名称）
@@ -51,6 +99,8 @@
 ### 2.3 输出文件
 - **日志文件**: 详细的执行日志
 - **结果文件**: CSV格式的执行结果报告
+- **SQLite数据库**: RSV配置和状态数据（.db文件）
+- **导出文件**: Excel或CSV格式的RSV配置报告
 
 ---
 
@@ -80,6 +130,15 @@
 | T-013 | 优化并发执行逻辑 | 中 | 4小时 | ⏳ 待开始 |
 | T-014 | 添加单元测试 | 中 | 6小时 | ⏳ 待开始 |
 | T-015 | 编写用户操作手册 | 低 | 3小时 | ⏳ 待开始 |
+| T-016 | 设计SQLite数据库表结构（Backup VMs、Replicated Items） | 高 | 4小时 | ⏳ 待开始 |
+| T-017 | 实现SQLite数据库初始化和连接管理模块 | 高 | 3小时 | ⏳ 待开始 |
+| T-018 | 实现RSV Backup虚拟机信息采集功能 | 高 | 6小时 | ⏳ 待开始 |
+| T-019 | 实现RSV Replicated Items信息采集功能 | 高 | 8小时 | ⏳ 待开始 |
+| T-020 | 实现增量采集插入机制 | 高 | 4小时 | ⏳ 待开始 |
+| T-021 | 实现数据导出到Excel功能 | 中 | 4小时 | ⏳ 待开始 |
+| T-022 | 实现数据导出到CSV功能 | 中 | 3小时 | ⏳ 待开始 |
+| T-023 | 创建RSV配置采集测试脚本 | 高 | 4小时 | ⏳ 待开始 |
+| T-024 | 编写RSV配置采集模块文档 | 中 | 3小时 | ⏳ 待开始 |
 
 ---
 
@@ -92,6 +151,8 @@
 | Azure-DR-Drill.ps1 | 主脚本，执行DR演练逻辑 | ~600行 | ✅ 完成 |
 | Start-DRDrill.ps1 | 快速启动脚本，环境检查 | ~140行 | ✅ 完成 |
 | Azure-Login.psm1 | Azure登录模块，提供统一的认证管理 | ~350行 | ✅ 完成 |
+| Azure-RSV-Collector.psm1 | RSV配置采集模块，采集Backup和Replicated Items信息 | ~800行 | ⏳ 待开发 |
+| Test-RSV-Collector.ps1 | RSV配置采集测试脚本 | ~200行 | ⏳ 待开发 |
 
 ### 4.2 配置文件
 
@@ -147,6 +208,22 @@
 | Clear-AzureLoginCache | 清除登录缓存 | ✅ 完成 |
 | Show-AzureLoginStatus | 显示登录状态详情 | ✅ 完成 |
 
+#### Azure-RSV-Collector.psm1 模块（待开发）
+
+| 模块名称 | 功能描述 | 状态 |
+|---------|---------|------|
+| Initialize-RSVDatabase | 初始化SQLite数据库和表结构 | ⏳ 待开发 |
+| Get-RSVBackupVMs | 获取RSV中所有Backup虚拟机信息 | ⏳ 待开发 |
+| Get-RSVReplicatedItems | 获取RSV中所有Replicated Items信息 | ⏳ 待开发 |
+| Insert-BackupVMData | 插入或更新Backup虚拟机数据到数据库 | ⏳ 待开发 |
+| Insert-ReplicatedItemData | 插入或更新Replicated Item数据到数据库 | ⏳ 待开发 |
+| Export-BackupVMsToCSV | 导出Backup虚拟机数据到CSV | ⏳ 待开发 |
+| Export-ReplicatedItemsToCSV | 导出Replicated Items数据到CSV | ⏳ 待开发 |
+| Export-BackupVMsToExcel | 导出Backup虚拟机数据到Excel | ⏳ 待开发 |
+| Export-ReplicatedItemsToExcel | 导出Replicated Items数据到Excel | ⏳ 待开发 |
+| Query-RSVData | 查询RSV数据（支持筛选和排序） | ⏳ 待开发 |
+| Get-RSVCollectionSummary | 获取RSV数据采集摘要 | ⏳ 待开发 |
+
 ---
 
 ## 五、配置参数说明
@@ -174,28 +251,75 @@
 | ContinueOnError | 出错后是否继续 | true |
 | ConcurrentTasks | 并发任务数 | 3 |
 
+### 5.3 RSV采集参数
+
+| 参数名 | 说明 | 默认值 |
+|--------|------|--------|
+| RSVDatabasePath | SQLite数据库文件路径 | .\data\rsv-data.db |
+| EnableIncrementalCollection | 启用增量采集 | true |
+| CollectionInterval | 采集间隔（分钟） | 60 |
+| ExportFormat | 导出格式（CSV/Excel） | CSV |
+| ExportPath | 导出文件路径 | .\exports\ |
+| IncludeBackupVMs | 是否采集Backup虚拟机 | true |
+| IncludeReplicatedItems | 是否采集Replicated Items | true |
+| MaxRetries | 采集失败重试次数 | 3 |
+| RetryInterval | 重试间隔（秒） | 10 |
+
 ---
 
 ## 六、使用流程
 
-### 6.1 准备阶段
+### 6.1 DR演练流程
+
+#### 6.1.1 准备阶段
 1. 安装Azure PowerShell模块
 2. 使用device login连接Azure
 3. 配置vmlist.txt（虚拟机列表）
 4. 配置rsv.txt（RSV列表）
 5. 配置config.txt（参数配置）
 
-### 6.2 执行阶段
+#### 6.1.2 执行阶段
 1. 运行Start-DRDrill.ps1
 2. 选择是否使用WhatIf模式
 3. 脚本自动执行DR演练
 4. 监控日志输出
 
-### 6.3 验证阶段
+#### 6.1.3 验证阶段
 1. 查看日志文件（./logs/dr-drill.log）
 2. 查看结果文件（./results/dr-drill-results_*.csv）
 3. 验证虚拟机状态
 4. 确认应用程序功能正常
+
+### 6.2 RSV配置采集流程
+
+#### 6.2.1 准备阶段
+1. 安装Azure PowerShell模块
+2. 安装SQLite（如需要）
+3. 使用device login连接Azure
+4. 配置rsv.txt（RSV列表）
+5. 配置RSV采集参数（可选）
+
+#### 6.2.2 采集阶段
+1. 运行Test-RSV-Collector.ps1
+2. 脚本自动初始化SQLite数据库
+3. 采集RSV Backup虚拟机信息
+4. 采集RSV Replicated Items信息
+5. 数据自动存储到SQLite数据库
+6. 监控采集进度和日志
+
+#### 6.2.3 导出阶段
+1. 选择导出格式（CSV或Excel）
+2. 选择导出字段（可选）
+3. 应用筛选条件（可选）
+4. 生成导出文件
+5. 验证导出数据完整性
+
+#### 6.2.4 增量采集
+1. 定期运行采集脚本
+2. 脚本自动检测数据变化
+3. 只插入或更新变化的数据
+4. 保留历史数据记录
+5. 支持数据对比和分析
 
 ---
 
@@ -206,17 +330,28 @@
 - [ ] 日志记录功能测试
 - [ ] Azure连接检查测试
 - [ ] 各功能模块独立测试
+- [ ] SQLite数据库初始化测试
+- [ ] 数据插入和更新测试
+- [ ] 数据查询和筛选测试
+- [ ] 数据导出功能测试（CSV/Excel）
 
 ### 7.2 集成测试
 - [ ] 单台虚拟机完整流程测试
 - [ ] 多台虚拟机批量测试
 - [ ] 错误场景测试
 - [ ] 超时场景测试
+- [ ] RSV Backup虚拟机采集测试
+- [ ] RSV Replicated Items采集测试
+- [ ] 增量采集机制测试
+- [ ] 数据导出完整性测试
 
 ### 7.3 用户验收测试
 - [ ] 在实际环境执行演练
 - [ ] 验证业务连续性
 - [ ] 性能和稳定性测试
+- [ ] RSV配置采集验证
+- [ ] 导出数据准确性验证
+- [ ] 增量采集效果验证
 
 ---
 
@@ -229,6 +364,11 @@
 | 网络连接不稳定 | 高 | 错误处理和继续执行选项 | ✅ 已实现 |
 | 权限不足 | 高 | 前置检查和明确提示 | ✅ 已实现 |
 | 数据丢失 | 低 | 使用TestFailover模式 | ✅ 已实现 |
+| SQLite数据库访问失败 | 中 | 增加重试机制和错误处理 | ⏳ 待实现 |
+| RSV数据采集失败 | 高 | 增加重试机制和日志记录 | ⏳ 待实现 |
+| 数据导出格式错误 | 中 | 格式验证和错误提示 | ⏳ 待实现 |
+| 增量采集数据不一致 | 中 | 数据校验和冲突处理 | ⏳ 待实现 |
+| 大量数据采集性能问题 | 中 | 分批采集和进度显示 | ⏳ 待实现 |
 
 ---
 
@@ -259,7 +399,9 @@
 ### 10.1 待处理反馈
 | 日期 | 反馈内容 | 优先级 | 处理状态 |
 |------|---------|--------|----------|
-| - | - | - | - |
+| 2026-01-28 | 开发RSV配置采集模块，采集Backup虚拟机和Replicated Items信息 | 高 | ⏳ 待处理 |
+| 2026-01-28 | 使用SQLite数据库存储RSV配置数据，支持增量采集 | 高 | ⏳ 待处理 |
+| 2026-01-28 | 实现数据导出到Excel和CSV格式 | 中 | ⏳ 待处理 |
 
 ### 10.2 已处理反馈
 | 日期 | 反馈内容 | 处理方案 | 处理日期 |
@@ -273,6 +415,7 @@
 
 | 版本 | 日期 | 变更说明 | 作者 |
 |------|------|---------|------|
+| 1.2.0 | 2026-01-28 | 新增RSV配置采集需求：采集Backup虚拟机信息（状态、时间、策略、大小）；采集Replicated Items信息（映射关系、ASR状态、操作指标）；使用SQLite数据库存储数据；支持增量采集插入机制；支持导出到Excel和CSV格式；更新项目计划文档 | Azure DR Team |
 | 1.1.0 | 2026-01-27 | 新增Azure登录模块（Azure-Login.psm1），提供统一的认证管理；实现Test-AzureLoginStatus、Invoke-AzureDeviceLogin、Select-AzureSubscription、Initialize-AzureSession等函数；集成token缓存机制；更新Start-DRDrill.ps1和Azure-DR-Drill.ps1使用新登录模块；创建LOGIN_MODULE.md文档 | Azure DR Team |
 | 1.0.1 | 2026-01-27 | 新增token缓存机制，避免频繁重新登录；添加Get-TokenCache、Save-TokenCache、Test-TokenValid函数；更新配置参数和文档 | Azure DR Team |
 | 1.0.0 | 2026-01-27 | 初始版本，完成核心功能开发 | Azure DR Team |

@@ -73,31 +73,18 @@ function Test-SQLiteModule {
         检查SQLite模块是否可用
     
     .DESCRIPTION
-        检查系统是否安装了SQLite模块，如果没有则尝试安装
+        检查系统是否安装了System.Data.SQLite
     
     .EXAMPLE
         $result = Test-SQLiteModule
     #>
     try {
-        $null = Get-Command -Name Invoke-SqliteQuery -ErrorAction Stop
+        $null = [System.Reflection.Assembly]::LoadWithPartialName("System.Data.SQLite")
         return $true
     }
     catch {
-        Write-RSVLog "SQLite模块未安装，尝试安装..." -Level "WARNING"
-        
-        try {
-            Install-Module -Name SQLite -Scope CurrentUser -Force -ErrorAction Stop
-            
-            # 安装后立即导入模块
-            Import-Module -Name SQLite -Force -ErrorAction Stop
-            
-            Write-RSVLog "SQLite模块安装成功" -Level "INFO"
-            return $true
-        }
-        catch {
-            Write-RSVLog "SQLite模块安装失败: $_" -Level "ERROR"
-            return $false
-        }
+        Write-RSVLog "System.Data.SQLite不可用: $_" -Level "WARNING"
+        return $false
     }
 }
 
@@ -142,7 +129,7 @@ function Initialize-RSVDatabase {
         
         # 检查SQLite模块
         if (-not (Test-SQLiteModule)) {
-            throw "SQLite模块不可用"
+            throw "System.Data.SQLite不可用"
         }
         
         # 如果强制重新创建，删除现有数据库
@@ -151,8 +138,10 @@ function Initialize-RSVDatabase {
             Write-RSVLog "删除现有数据库" -Level "INFO"
         }
         
-        # 打开数据库连接
-        $Script:DatabaseConnection = New-SQLiteConnection -DataSource $DatabasePath
+        # 创建数据库连接
+        $connectionString = "Data Source=$DatabasePath;Version=3;"
+        $Script:DatabaseConnection = New-Object System.Data.SQLite.SQLiteConnection($connectionString)
+        $Script:DatabaseConnection.Open()
         $Script:DatabasePath = $DatabasePath
         
         # 创建通用采集记录表
@@ -170,20 +159,21 @@ function Initialize-RSVDatabase {
         )
 "@
         
-        Invoke-SqliteQuery -SQLiteConnection $Script:DatabaseConnection -Query $createCollectionRecordsTable
+        $command = $Script:DatabaseConnection.CreateCommand()
+        $command.CommandText = $createCollectionRecordsTable
+        $command.ExecuteNonQuery()
         Write-RSVLog "创建collection_records表" -Level "INFO"
         
         # 创建索引
-        $createIndexes = @"
-        CREATE INDEX IF NOT EXISTS idx_data_type ON collection_records(data_type);
-        CREATE INDEX IF NOT EXISTS idx_collection_time ON collection_records(collection_time);
-        CREATE INDEX IF NOT EXISTS idx_collector_name ON collection_records(collector_name);
-"@
+        $createIndexes = @(
+            "CREATE INDEX IF NOT EXISTS idx_data_type ON collection_records(data_type);",
+            "CREATE INDEX IF NOT EXISTS idx_collection_time ON collection_records(collection_time);",
+            "CREATE INDEX IF NOT EXISTS idx_collector_name ON collection_records(collector_name);"
+        )
         
-        foreach ($indexQuery in $createIndexes -split ';') {
-            if ($indexQuery.Trim()) {
-                Invoke-SqliteQuery -SQLiteConnection $Script:DatabaseConnection -Query $indexQuery.Trim()
-            }
+        foreach ($indexQuery in $createIndexes) {
+            $command.CommandText = $indexQuery
+            $command.ExecuteNonQuery()
         }
         
         Write-RSVLog "创建索引" -Level "INFO"
@@ -209,7 +199,8 @@ function Initialize-RSVDatabase {
         )
 "@
         
-        Invoke-SqliteQuery -SQLiteConnection $Script:DatabaseConnection -Query $createBackupVMsTable
+        $command.CommandText = $createBackupVMsTable
+        $command.ExecuteNonQuery()
         Write-RSVLog "创建backup_vms表" -Level "INFO"
         
         # 创建Replicated Items专用表
@@ -246,7 +237,8 @@ function Initialize-RSVDatabase {
         )
 "@
         
-        Invoke-SqliteQuery -SQLiteConnection $Script:DatabaseConnection -Query $createReplicatedItemsTable
+        $command.CommandText = $createReplicatedItemsTable
+        $command.ExecuteNonQuery()
         Write-RSVLog "创建replicated_items表" -Level "INFO"
         
         Write-RSVLog "数据库初始化完成" -Level "INFO"
@@ -304,10 +296,17 @@ function Get-LastCollectionTime {
     
     try {
         $query = "SELECT MAX(collection_time) as last_time FROM collection_records WHERE data_type = '$DataType'"
-        $result = Invoke-SqliteQuery -SQLiteConnection $Script:DatabaseConnection -Query $query
+        $command = $Script:DatabaseConnection.CreateCommand()
+        $command.CommandText = $query
+        $reader = $command.ExecuteReader()
         
-        if ($result -and $result.last_time) {
-            return [DateTime]::Parse($result.last_time)
+        if ($reader.Read()) {
+            $lastTime = $reader["last_time"]
+            $reader.Close()
+            
+            if ($lastTime) {
+                return [DateTime]::Parse($lastTime)
+            }
         }
         
         return $null
@@ -580,7 +579,11 @@ function Insert-RSVData {
             
             # 检查是否已存在
             $checkQuery = "SELECT id FROM collection_records WHERE data_type = '$dataType' AND collection_time = '$($item.CollectionTime)'"
-            $existing = Invoke-SqliteQuery -SQLiteConnection $Script:DatabaseConnection -Query $checkQuery
+            $command = $Script:DatabaseConnection.CreateCommand()
+            $command.CommandText = $checkQuery
+            $reader = $command.ExecuteReader()
+            $existing = $reader.Read()
+            $reader.Close()
             
             if ($existing) {
                 # 更新现有记录
@@ -594,7 +597,8 @@ function Insert-RSVData {
                 WHERE data_type = '$dataType' AND collection_time = '$($item.CollectionTime)'
 "@
                 
-                Invoke-SqliteQuery -SQLiteConnection $Script:DatabaseConnection -Query $updateQuery
+                $command.CommandText = $updateQuery
+                $command.ExecuteNonQuery()
                 $updatedCount++
             }
             else {
@@ -606,7 +610,8 @@ function Insert-RSVData {
                 ('$dataType', '$($item.CollectorName)', '$($item.CollectionTime)', '$($item.CollectionVersion)', '$dataJson', '$metadataJson')
 "@
                 
-                Invoke-SqliteQuery -SQLiteConnection $Script:DatabaseConnection -Query $insertQuery
+                $command.CommandText = $insertQuery
+                $command.ExecuteNonQuery()
                 $insertedCount++
             }
         }
@@ -685,7 +690,17 @@ function Export-RSVDataToCSV {
         }
         
         $query = "SELECT data_json FROM collection_records $whereClause ORDER BY collection_time DESC"
-        $results = Invoke-SqliteQuery -SQLiteConnection $Script:DatabaseConnection -Query $query
+        $command = $Script:DatabaseConnection.CreateCommand()
+        $command.CommandText = $query
+        $reader = $command.ExecuteReader()
+        
+        $results = @()
+        while ($reader.Read()) {
+            $results += [PSCustomObject]@{
+                data_json = $reader["data_json"]
+            }
+        }
+        $reader.Close()
         
         if (-not $results -or $results.Count -eq 0) {
             Write-RSVLog "没有数据可导出" -Level "WARNING"
@@ -810,6 +825,74 @@ function Export-RSVDataToExcel {
 # 查询和摘要函数
 # ========================================
 
+function Get-RSVData {
+    <#
+    .SYNOPSIS
+        从数据库查询RSV数据
+    
+    .DESCRIPTION
+        从SQLite数据库中查询RSV配置数据
+    
+    .PARAMETER DataType
+        数据类型（BackupVM, ReplicatedItem, All）
+    
+    .PARAMETER Filter
+        筛选条件（SQL WHERE子句）
+    
+    .PARAMETER OrderBy
+        排序字段
+    
+    .EXAMPLE
+        $data = Get-RSVData -DataType "BackupVM" -OrderBy "collection_time DESC"
+    #>
+    param(
+        [Parameter(Mandatory = $false)]
+        [ValidateSet("BackupVM", "ReplicatedItem", "All")]
+        [string]$DataType = "All",
+        
+        [Parameter(Mandatory = $false)]
+        [string]$Filter = "",
+        
+        [Parameter(Mandatory = $false)]
+        [string]$OrderBy = "collection_time DESC"
+    )
+    
+    try {
+        $whereClause = ""
+        if ($DataType -ne "All") {
+            $whereClause = "WHERE data_type = '$DataType'"
+        }
+        
+        if ($Filter) {
+            if ($whereClause) {
+                $whereClause += " AND "
+            }
+            else {
+                $whereClause = "WHERE "
+            }
+            $whereClause += $Filter
+        }
+        
+        $query = "SELECT data_json FROM collection_records $whereClause ORDER BY $OrderBy"
+        $command = $Script:DatabaseConnection.CreateCommand()
+        $command.CommandText = $query
+        $reader = $command.ExecuteReader()
+        
+        $results = @()
+        while ($reader.Read()) {
+            $data = $reader["data_json"] | ConvertFrom-Json
+            $results += $data.Data
+        }
+        $reader.Close()
+        
+        return $results
+    }
+    catch {
+        Write-RSVLog "查询数据失败: $_" -Level "ERROR"
+        return @()
+    }
+}
+
 function Get-RSVDataSummary {
     <#
     .SYNOPSIS
@@ -830,12 +913,17 @@ function Get-RSVDataSummary {
         $dataTypes = @("BackupVM", "ReplicatedItem")
         foreach ($type in $dataTypes) {
             $query = "SELECT COUNT(*) as count, MIN(collection_time) as first_time, MAX(collection_time) as last_time FROM collection_records WHERE data_type = '$type'"
-            $result = Invoke-SqliteQuery -SQLiteConnection $Script:DatabaseConnection -Query $query
+            $command = $Script:DatabaseConnection.CreateCommand()
+            $command.CommandText = $query
+            $reader = $command.ExecuteReader()
             
-            $summary[$type] = @{
-                Count = $result.count
-                FirstCollectionTime = if ($result.first_time) { [DateTime]::Parse($result.first_time) } else { $null }
-                LastCollectionTime = if ($result.last_time) { [DateTime]::Parse($result.last_time) } else { $null }
+            if ($reader.Read()) {
+                $summary[$type] = @{
+                    Count = $reader["count"]
+                    FirstCollectionTime = if ($reader["first_time"]) { [DateTime]::Parse($reader["first_time"]) } else { $null }
+                    LastCollectionTime = if ($reader["last_time"]) { [DateTime]::Parse($reader["last_time"]) } else { $null }
+                }
+                $reader.Close()
             }
         }
         
@@ -1001,6 +1089,7 @@ Export-ModuleMember -Function @(
     'Insert-RSVData',
     'Export-RSVDataToCSV',
     'Export-RSVDataToExcel',
+    'Get-RSVData',
     'Get-RSVDataSummary',
     'Invoke-RSVCollection'
 )

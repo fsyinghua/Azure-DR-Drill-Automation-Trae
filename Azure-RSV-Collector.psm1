@@ -74,17 +74,42 @@ function Test-SQLiteModule {
     
     .DESCRIPTION
         检查系统是否安装了System.Data.SQLite
+        优先检查lib目录下的DLL，如果没有则尝试加载全局程序集
     
     .EXAMPLE
         $result = Test-SQLiteModule
     #>
     try {
+        # 方法1: 尝试直接引用程序集类型（已加载到内存）
         $null = [System.Data.SQLite.SQLiteConnection]
         return $true
     }
     catch {
-        Write-RSVLog "System.Data.SQLite不可用: $_" -Level "WARNING"
-        return $false
+        # 方法2: 检查lib目录下的DLL
+        $moduleDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+        $libDir = Join-Path $moduleDir "lib"
+        $dllPath = Join-Path $libDir "System.Data.SQLite.dll"
+        
+        if (Test-Path $dllPath) {
+            try {
+                Write-RSVLog "从lib目录加载System.Data.SQLite: $dllPath" -Level "INFO"
+                Add-Type -Path $dllPath -ErrorAction Stop
+                
+                # 验证
+                $null = [System.Data.SQLite.SQLiteConnection]
+                Write-RSVLog "System.Data.SQLite加载成功" -Level "INFO"
+                return $true
+            }
+            catch {
+                Write-RSVLog "加载lib目录下的System.Data.SQLite失败: $_" -Level "WARNING"
+                return $false
+            }
+        }
+        else {
+            Write-RSVLog "System.Data.SQLite不可用" -Level "WARNING"
+            Write-RSVLog "请运行scripts\install-sqlite-dll.ps1安装System.Data.SQLite" -Level "WARNING"
+            return $false
+        }
     }
 }
 

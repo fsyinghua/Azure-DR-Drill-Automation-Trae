@@ -426,6 +426,54 @@ if (-not $azModule) {
 
 ---
 
+### 3.3 System.Data.SQLite未安装
+
+**错误信息**:
+```
+[2026-01-28 20:18:32] [WARNING] System.Data.SQLite不可用: Unable to find type [System.Data.SQLite.SQLiteConnection].
+[2026-01-28 20:18:32] [ERROR] 数据库初始化失败: System.Data.SQLite不可用
+```
+
+**发生场景**: 初始化RSV数据库时
+
+**根本原因**: 
+- 系统未安装System.Data.SQLite .NET程序集
+- 已安装的SQLite PowerShell模块（如mount-sqlite）不能替代System.Data.SQLite
+- System.Data.SQLite是.NET程序集，用于编程方式操作SQLite数据库
+- SQLite PowerShell模块只是用于挂载SQLite数据库为驱动器
+
+**修正方案**:
+```powershell
+# 方法1: 运行安装脚本
+.\scripts\install-sqlite-dll.ps1
+
+# 方法2: 手动下载DLL
+# 1. 访问 https://www.nuget.org/packages/System.Data.SQLite/
+# 2. 下载最新版本的.nupkg文件
+# 3. 解压.nupkg文件（改为.zip后解压）
+# 4. 将lib\net46\System.Data.SQLite.dll复制到lib目录
+# 5. 重新运行测试脚本
+
+# 方法3: 直接加载DLL
+Add-Type -Path ".\lib\System.Data.SQLite.dll"
+```
+
+**预防措施**:
+- 在项目README中明确说明System.Data.SQLite的安装要求
+- 提供自动安装脚本（scripts\install-sqlite-dll.ps1）
+- 在Test-SQLiteModule函数中添加lib目录DLL检测
+- 提供详细的错误提示和安装指导
+
+**相关代码**: 
+- [scripts/install-sqlite-dll.ps1](file:///d:/UserProfiles/JoeHe/Codes/Azure-DR-Drill-Automation-Trae/scripts/install-sqlite-dll.ps1)
+- [Azure-RSV-Collector.psm1](file:///d:/UserProfiles/JoeHe/Codes/Azure-DR-Drill-Automation-Trae/Azure-RSV-Collector.psm1#L70-L107)
+
+**重要区别**:
+- ❌ SQLite PowerShell模块：提供mount-sqlite命令，用于挂载数据库为驱动器
+- ✅ System.Data.SQLite：提供.NET程序集，用于编程方式操作数据库
+
+---
+
 ## 四、参数类型错误
 
 ### 4.1 Save-LoginCache参数类型不匹配

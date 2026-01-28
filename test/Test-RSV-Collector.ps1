@@ -13,10 +13,7 @@
 
 param(
     [Parameter(Mandatory = $false)]
-    [switch]$WhatIf,
-    
-    [Parameter(Mandatory = $false)]
-    [switch]$Verbose
+    [switch]$WhatIf
 )
 
 # ========================================

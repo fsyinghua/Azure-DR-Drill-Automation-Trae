@@ -1,4 +1,4 @@
-# Pre-commit检查脚本
+﻿# Pre-commit检查脚本
 # 用于在提交代码前自动检查代码质量
 
 param(
@@ -64,6 +64,55 @@ if ($syntaxErrors -eq 0) {
     Write-Host "  ✓ 所有文件语法正确" -ForegroundColor Green
 } else {
     Write-Host "  发现 $syntaxErrors 个语法错误" -ForegroundColor Red
+}
+
+# 2.5 检查参数重复定义
+Write-Host ""
+Write-Host "检查2.5: 参数重复定义..." -ForegroundColor Yellow
+$paramDuplicateErrors = 0
+$builtInParams = @('Verbose', 'Debug', 'ErrorAction', 'WarningAction', 'InformationAction', 'ErrorVariable', 'WarningVariable', 'InformationVariable', 'OutVariable', 'OutBuffer', 'PipelineVariable', 'WhatIf', 'Confirm')
+
+foreach ($file in ($ps1Files + $psm1Files)) {
+    try {
+        $ast = [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$null, [ref]$null)
+        
+        # 获取所有参数定义
+        $paramBlocks = $ast.FindAll({ $args[0] -is [System.Management.Automation.Language.ParamBlockAst] }, $true)
+        
+        foreach ($paramBlock in $paramBlocks) {
+            $paramNames = @()
+            
+            # 检查每个参数
+            foreach ($param in $paramBlock.Parameters) {
+                $paramName = $param.Name.VariablePath.UserPath
+                
+                # 检查是否重复定义
+                if ($paramNames -contains $paramName) {
+                    Write-Host "  ✗ $($file.FullName) 参数 '$paramName' 重复定义" -ForegroundColor Red
+                    $paramDuplicateErrors++
+                    $errors++
+                }
+                
+                # 检查是否定义了PowerShell内置参数
+                if ($builtInParams -contains $paramName) {
+                    Write-Host "  ✗ $($file.FullName) 定义了PowerShell内置参数 '$paramName'" -ForegroundColor Red
+                    $paramDuplicateErrors++
+                    $errors++
+                }
+                
+                $paramNames += $paramName
+            }
+        }
+    }
+    catch {
+        # 忽略解析错误，已在语法检查中处理
+    }
+}
+
+if ($paramDuplicateErrors -eq 0) {
+    Write-Host "  ✓ 未发现参数重复定义" -ForegroundColor Green
+} else {
+    Write-Host "  发现 $paramDuplicateErrors 个参数定义错误" -ForegroundColor Red
 }
 
 # 3. 检查模块导出

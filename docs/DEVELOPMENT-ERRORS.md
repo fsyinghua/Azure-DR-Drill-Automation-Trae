@@ -182,6 +182,40 @@ charset = utf-8-bom
 
 ---
 
+### 2.3 新建PowerShell脚本未使用UTF-8 BOM编码
+
+**错误信息**:
+```
+At E:\JoeHe\codes\Azure-DR-Drill-Automation-Trae\test\Test-RSV-Collector.ps1:399 char:24
++     Write-Host "æ•°æ®æ'˜è¦:" -ForegroundColor Cyan
++                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The string is missing the terminator: '.
+```
+
+**发生场景**: 创建新的PowerShell脚本文件后，在远程系统运行时
+
+**根本原因**: 
+- 使用Write工具创建文件时，默认未指定UTF-8 BOM编码
+- 新创建的文件没有BOM标记，导致PowerShell解析器无法正确识别中文字符
+
+**修正方案**:
+```powershell
+# 创建文件后立即转换为UTF-8 BOM编码
+$content = Get-Content -Path "test\Test-RSV-Collector.ps1" -Raw -Encoding UTF8
+$utf8BOM = New-Object System.Text.UTF8Encoding $true
+[System.IO.File]::WriteAllText("$(Get-Location)\test\Test-RSV-Collector.ps1", $content, $utf8BOM)
+```
+
+**预防措施**:
+- ⚠️ **重要**: 使用Write工具创建PowerShell脚本后，必须立即转换为UTF-8 BOM编码
+- 在提交代码前运行pre-commit-check.ps1检查文件编码
+- 在创建新脚本时，确保使用UTF-8 BOM编码
+- 在代码审查清单中添加"检查文件编码"项
+
+**相关文档**: [pre-commit-check.ps1](file:///d:/UserProfiles/JoeHe/Codes/Azure-DR-Drill-Automation-Trae/scripts/pre-commit-check.ps1)
+
+---
+
 ## 三、模块检测问题
 
 ### 3.1 模块检测失败（已安装但未检测到）

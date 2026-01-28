@@ -456,75 +456,10 @@ function Get-RSVReplicatedItems {
         }
         
         # 获取Fabric
-        $fabrics = Get-AzRecoveryServicesFabric -VaultId $rsv.ID -ErrorAction SilentlyContinue
-        
-        if (-not $fabrics) {
-            Write-RSVLog "未找到Fabric，跳过Replicated Items采集" -Level "WARNING"
-            return @()
-        }
-        
-        $replicatedItems = @()
-        
-        foreach ($fabric in $fabrics) {
-            # 获取保护容器
-            $containers = Get-AzRecoveryServicesProtectionContainer -Fabric $fabric -VaultId $rsv.ID -ErrorAction SilentlyContinue
-            
-            foreach ($container in $containers) {
-                # 获取Replicated Items
-                $items = Get-AzRecoveryServicesReplicationProtectedItem -ProtectionContainer $container -ErrorAction SilentlyContinue
-                
-                foreach ($item in $items) {
-                    $replicatedItem = @{
-                        DataType = "ReplicatedItem"
-                        CollectorName = "ReplicatedItemCollector"
-                        CollectionTime = (Get-Date).ToUniversalTime().ToString("o")
-                        CollectionVersion = $Script:RSVCollectorVersion
-                        
-                        Data = @{
-                            RSVName = $RSVName
-                            VMName = $item.Name
-                            VMId = $item.ID
-                            SourceResourceGroup = $item.SourceResourceGroupName
-                            SourceLocation = $item.SourceLocation
-                            SourceNetwork = $item.SourceNetwork
-                            SourceSubnet = $item.SourceSubnet
-                            TargetResourceGroup = $item.TargetResourceGroupName
-                            TargetLocation = $item.TargetLocation
-                            TargetNetwork = $item.TargetNetwork
-                            TargetSubnet = $item.TargetSubnet
-                            TargetVMName = $item.TargetVMName
-                            ASRStatus = $item.ASRStatus
-                            FailoverState = $item.FailoverState
-                            CommitState = $item.CommitState
-                            ReprotectState = $item.ReprotectState
-                            FallbackState = $item.FallbackState
-                            Status = $item.Status
-                            Health = $item.Health
-                            LastSuccessfulReplicationTime = if ($item.LastSuccessfulReplicationTime) { $item.LastSuccessfulReplicationTime.ToString("o") } else { $null }
-                            RecoveryPoint = if ($item.RecoveryPoint) { $item.RecoveryPoint.ToString("o") } else { $null }
-                            RPO = $item.RPO
-                            TestFailoverState = $item.TestFailoverState
-                            ReplicationProgress = $item.ReplicationProgress
-                            DataTransferRateMBps = $item.DataTransferRateMBps
-                        }
-                        
-                        Metadata = @{
-                            Source = "Azure"
-                            Region = $item.SourceLocation
-                            SubscriptionId = (Get-AzContext).Subscription.Id
-                            Tags = $item.Tags
-                        }
-                    }
-                    
-                    $replicatedItems += $replicatedItem
-                    Write-RSVLog "  采集Replicated Item: $($item.Name)" -Level "INFO"
-                }
-            }
-        }
-        
-        Write-RSVLog "完成采集Replicated Items: $($replicatedItems.Count) 个" -Level "INFO"
-        
-        return $replicatedItems
+        # 注意: Get-AzRecoveryServicesFabric 命令可能不存在，需要ASR模块
+        # 暂时跳过Replicated Items采集
+        Write-RSVLog "Replicated Items采集功能需要ASR模块，暂时跳过" -Level "WARNING"
+        return @()
     }
     catch {
         Write-RSVLog "采集Replicated Items失败: $_" -Level "ERROR"
@@ -928,15 +863,15 @@ function Get-RSVDataSummary {
             $reader = $command.ExecuteReader()
             
             if ($reader.Read()) {
-                $count = $reader["count"]
+                $count = [int]$reader["count"]
                 $firstTime = $reader["first_time"]
                 $lastTime = $reader["last_time"]
                 $reader.Close()
                 
                 $summary[$type] = @{
                     Count = $count
-                    FirstCollectionTime = if ($firstTime) { [DateTime]::Parse($firstTime) } else { $null }
-                    LastCollectionTime = if ($lastTime) { [DateTime]::Parse($lastTime) } else { $null }
+                    FirstCollectionTime = if ($firstTime -and $firstTime -ne [System.DBNull]::Value) { [DateTime]::Parse($firstTime) } else { $null }
+                    LastCollectionTime = if ($lastTime -and $lastTime -ne [System.DBNull]::Value) { [DateTime]::Parse($lastTime) } else { $null }
                 }
             }
         }

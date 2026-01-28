@@ -24,6 +24,9 @@ else {
     Write-Host "  ✗ 版本过低，需要5.1或更高" -ForegroundColor Red
     $allPassed = $false
 }
+
+# 检查.NET版本
+Write-Host "  .NET版本: $($PSVersionTable.CLRVersion)" -ForegroundColor White
 Write-Host ""
 
 # 检查Az模块
@@ -49,6 +52,46 @@ if (-not $azModule) {
 if ($azModule) {
     Write-Host "  ✓ Az模块已安装" -ForegroundColor Green
     Write-Host "  版本: $($azModule.Version)" -ForegroundColor White
+    
+    # 检查是否有多个Az模块版本
+    Write-Host "  检查Az模块冲突..." -ForegroundColor Yellow
+    $allAzModules = Get-Module -ListAvailable -Name Az* | Group-Object Name | Where-Object { $_.Count -gt 1 }
+    if ($allAzModules.Count -gt 0) {
+        Write-Host "  ⚠ 警告: 发现多个版本的Az模块" -ForegroundColor Yellow
+        foreach ($moduleGroup in $allAzModules) {
+            Write-Host "    - $($moduleGroup.Name) ($($moduleGroup.Count) 个版本)" -ForegroundColor White
+        }
+    }
+    else {
+        Write-Host "  ✓ 未发现模块冲突" -ForegroundColor Green
+    }
+    
+    # 检查当前加载的模块
+    Write-Host "  检查已加载的模块..." -ForegroundColor Yellow
+    $loadedModules = Get-Module -Name Az* | Select-Object Name, Version
+    if ($loadedModules) {
+        Write-Host "  已加载 $($loadedModules.Count) 个Az相关模块:" -ForegroundColor White
+        foreach ($module in $loadedModules) {
+            Write-Host "    - $($module.Name) (版本: $($module.Version))" -ForegroundColor White
+        }
+    }
+    
+    # 测试Get-AzSubscription命令
+    Write-Host "  测试Get-AzSubscription命令..." -ForegroundColor Yellow
+    try {
+        $testResult = Get-AzSubscription -ErrorAction Stop | Select-Object -First 1
+        if ($testResult) {
+            Write-Host "  ✓ Get-AzSubscription命令正常" -ForegroundColor Green
+        }
+        else {
+            Write-Host "  ⚠ 警告: Get-AzSubscription返回空结果" -ForegroundColor Yellow
+        }
+    }
+    catch {
+        Write-Host "  ✗ Get-AzSubscription命令失败: $_" -ForegroundColor Red
+        Write-Host "  错误类型: $($_.Exception.GetType().FullName)" -ForegroundColor Red
+        $allPassed = $false
+    }
 }
 else {
     Write-Host "  ✗ Az模块未安装" -ForegroundColor Red

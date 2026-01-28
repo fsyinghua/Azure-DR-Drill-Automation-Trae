@@ -19,6 +19,7 @@
 - [参数类型错误](#四参数类型错误)
 - [模块导出问题](#五模块导出问题)
 - [用户体验问题](#六用户体验问题)
+- [RSV采集错误](#七rsv采集错误)
 
 ---
 
@@ -698,6 +699,625 @@ foreach ($file in $allFiles) {
 
 ---
 
+## 七、RSV采集错误
+
+### 7.1 SQLite模块检测失败
+
+**错误信息**:
+```
+未找到SQLite模块，正在安装...
+```
+
+**发生场景**: 测试SQLite模块是否可用时
+
+**根本原因**: 
+- `Get-Module -ListAvailable` 扫描时间过长
+- SQLite模块命令与System.Data.SQLite不同
+- SQLite模块的命令是`mount-sqlite`，不是`Invoke-SqliteQuery`
+
+**修正方案**:
+```powershell
+# 修改前
+function Test-SQLiteModule {
+    $sqliteModule = Get-Module -ListAvailable -Name SQLite -ErrorAction SilentlyContinue
+    
+    if (-not $sqliteModule) {
+        Write-Host "未找到SQLite模块，正在安装..." -ForegroundColor Yellow
+        Install-Module -Name SQLite -Force -Scope CurrentUser
+    }
+}
+
+# 修改后
+function Test-SQLiteModule {
+    # 直接检查System.Data.SQLite程序集是否可用
+    try {
+        Add-Type -Path "System.Data.SQLite.dll" -ErrorAction Stop
+        Write-Host "System.Data.SQLite可用" -ForegroundColor Green
+        return $true
+    }
+    catch {
+        Write-Host "System.Data.SQLite不可用: $_" -ForegroundColor Red
+        return $false
+    }
+}
+```
+
+**预防措施**:
+- ⚠️ **重要**: 不要使用SQLite模块的命令（如`Invoke-SqliteQuery`、`New-SQLiteConnection`）
+- 直接使用System.Data.SQLite程序集操作SQLite数据库
+- 在项目规范中明确使用System.Data.SQLite
+
+**相关代码**: [Azure-RSV-Collector.psm1](file:///d:/UserProfiles/JoeHe/Codes/Azure-DR-Drill-Automation-Trae/Azure-RSV-Collector.psm1#L40-L60)
+
+---
+
+### 7.2 数据库连接为null
+
+**错误信息**:
+```
+[ERROR] 数据库连接未打开
+```
+
+**发生场景**: 调用Get-RSVData或Get-RSVDataSummary函数时
+
+**根本原因**: 
+- 数据库连接已关闭
+- 未在调用前初始化数据库连接
+- 脚本执行流程中数据库连接管理不当
+
+**修正方案**:
+```powershell
+# 在Get-RSVData函数中添加检查
+function Get-RSVData {
+    try {
+        if (-not $Script:DatabaseConnection) {
+            Write-RSVLog "数据库连接未打开" -Level "ERROR"
+            return @()
+        }
+        
+        # ... 查询逻辑 ...
+    }
+    catch {
+        Write-RSVLog "查询数据失败: $_" -Level "ERROR"
+        return @()
+    }
+}
+
+# 在Get-RSVDataSummary函数中添加检查
+function Get-RSVDataSummary {
+    try {
+        Write-RSVLog "获取数据摘要" -Level "INFO"
+        
+        if (-not $Script:DatabaseConnection) {
+            Write-RSVLog "数据库连接未打开" -Level "ERROR"
+            return @{}
+        }
+        
+        # ... 查询逻辑 ...
+    }
+    catch {
+        Write-RSVLog "获取数据摘要失败: $_" -Level "ERROR"
+        return @{}
+    }
+}
+
+# 在导出前重新打开数据库连接
+$dbInitialized = Initialize-RSVDatabase -DatabasePath $config.DatabasePath
+if (-not $dbInitialized) {
+    Write-Host "  数据库初始化失败" -ForegroundColor Red
+    return
+}
+
+# ... 执行导出 ...
+
+Close-RSVDatabase
+```
+
+**预防措施**:
+- 在所有数据库操作前检查连接状态
+- 在脚本执行流程中明确数据库连接的生命周期
+- 在导出前重新打开数据库连接
+- 添加详细的错误日志
+
+**相关代码**: [Azure-RSV-Collector.psm1](file:///d:/UserProfiles/JoeHe/Codes/Azure-DR-Drill-Automation-Trae/Azure-RSV-Collector.psm1#L860-L870), [Test-RSV-Collector.ps1](file:///d:/UserProfiles/JoeHe/Codes/Azure-DR-Drill-Automation-Trae/test/Test-RSV-Collector.ps1#L317-L323)
+
+---
+
+### 7.3 Export-Excel命令不存在
+
+**错误信息**:
+```
+The term 'Export-Excel' is not recognized as the name of a cmdlet, function, script file, or operable program.
+```
+
+**发生场景**: 尝试导出数据到Excel文件时
+
+**根本原因**: 
+- 未安装ImportExcel模块
+- 用户环境可能没有安装该模块
+- Excel导出需要额外依赖
+
+**修正方案**:
+```powershell
+# 修改前
+$backupVMs | Export-Excel -Path $excelPath -WorksheetName "BackupVMs" -AutoSize -AutoFilter -FreezeTopRow
+
+# 修改后
+$backupVMs | Export-Csv -Path $backupVMsPath -NoTypeInformation -Encoding UTF8BOM
+Write-Host "      导出 $($backupVMs.Count) 条Backup VM记录到 $backupVMsPath" -ForegroundColor Green
+```
+
+**预防措施**:
+- ⚠️ **重要**: 使用PowerShell内置的Export-Csv命令，避免外部依赖
+- 使用UTF8BOM编码确保中文正确显示
+- 在项目规范中明确使用CSV导出
+
+**相关代码**: [Test-RSV-Collector.ps1](file:///d:/UserProfiles/JoeHe/Codes/Azure-DR-Drill-Automation-Trae/test/Test-RSV-Collector.ps1#L322-L335)
+
+---
+
+### 7.4 CSV编码问题
+
+**错误信息**: 无明显错误，但CSV文件中文显示乱码
+
+**发生场景**: 使用Excel或其他工具打开CSV文件时
+
+**根本原因**: 
+- 使用UTF8编码而不是UTF8BOM
+- 缺少BOM标记导致Excel无法正确识别编码
+
+**修正方案**:
+```powershell
+# 修改前
+$backupVMs | Export-Csv -Path $backupVMsPath -NoTypeInformation -Encoding UTF8
+
+# 修改后
+$backupVMs | Export-Csv -Path $backupVMsPath -NoTypeInformation -Encoding UTF8BOM
+```
+
+**预防措施**:
+- ⚠️ **重要**: Export-Csv必须使用UTF8BOM编码
+- 在项目规范中明确编码要求
+- 在代码审查时检查所有Export-Csv调用
+
+**相关代码**: [Test-RSV-Collector.ps1](file:///d:/UserProfiles/JoeHe/Codes/Azure-DR-Drill-Automation-Trae/test/Test-RSV-Collector.ps1#L322-L335)
+
+---
+
+### 7.5 Get-AzRecoveryServicesBackupContainer参数错误
+
+**错误信息**:
+```
+cmdlet Get-AzRecoveryServicesBackupContainer at command pipeline position 1
+Supply values for the following parameters: 
+(Type !? for Help.) 
+ContainerType:
+```
+
+**发生场景**: 采集Backup虚拟机时
+
+**根本原因**: 
+- 命令缺少必需的ContainerType参数
+- Azure PowerShell模块要求指定容器类型
+
+**修正方案**:
+```powershell
+# 修改前
+$containers = Get-AzRecoveryServicesBackupContainer -VaultId $rsv.ID -ErrorAction SilentlyContinue
+
+# 修改后
+$containers = Get-AzRecoveryServicesBackupContainer -VaultId $rsv.ID -ContainerType "AzureVM" -ErrorAction SilentlyContinue
+```
+
+**预防措施**:
+- 在使用Azure命令前查看命令文档
+- 确保所有必需参数都已提供
+- 在代码审查时检查Azure命令调用
+
+**相关代码**: [Azure-RSV-Collector.psm1](file:///d:/UserProfiles/JoeHe/Codes/Azure-DR-Drill-Automation-Trae/Azure-RSV-Collector.psm1#L362)
+
+---
+
+### 7.6 Get-AzRecoveryServicesBackupItem参数错误
+
+**错误信息**:
+```
+cmdlet Get-AzRecoveryServicesBackupItem at command pipeline position 1
+Supply values for the following parameters: 
+(Type !? for Help.) 
+WorkloadType:
+```
+
+**发生场景**: 采集Backup虚拟机时
+
+**根本原因**: 
+- 命令缺少必需的WorkloadType参数
+- Azure PowerShell模块要求指定工作负载类型
+
+**修正方案**:
+```powershell
+# 修改前
+$items = Get-AzRecoveryServicesBackupItem -Container $container -VaultId $rsv.ID -ErrorAction SilentlyContinue
+
+# 修改后
+$items = Get-AzRecoveryServicesBackupItem -Container $container -VaultId $rsv.ID -WorkloadType "AzureVM" -ErrorAction SilentlyContinue
+```
+
+**预防措施**:
+- 在使用Azure命令前查看命令文档
+- 确保所有必需参数都已提供
+- 在代码审查时检查Azure命令调用
+
+**相关代码**: [Azure-RSV-Collector.psm1](file:///d:/UserProfiles/JoeHe/Codes/Azure-DR-Drill-Automation-Trae/Azure-RSV-Collector.psm1#L373)
+
+---
+
+### 7.7 Get-AzRecoveryServicesFabric命令不存在
+
+**错误信息**:
+```
+The term 'Get-AzRecoveryServicesFabric' is not recognized as the name of a cmdlet, function, script file, or operable program.
+```
+
+**发生场景**: 采集Replicated Items时
+
+**根本原因**: 
+- ASR命令名称不正确
+- 可能需要额外的ASR模块
+- 命令可能已更名
+
+**修正方案**:
+```powershell
+# 修改前
+$fabrics = Get-AzRecoveryServicesFabric -VaultId $rsv.ID -ErrorAction SilentlyContinue
+
+# 修改后
+# 导入Vault设置
+try {
+    $context = Get-AzContext
+    $null = Set-AzRecoveryServicesAsrVaultContext -DefaultProfile $context -ErrorAction SilentlyContinue
+}
+catch {
+    Write-RSVLog "导入Vault设置失败: $_" -Level "WARNING"
+}
+
+$fabrics = Get-AzRecoveryServicesAsrFabric -ErrorAction SilentlyContinue
+```
+
+**预防措施**:
+- 在使用ASR命令前先导入Vault上下文
+- 检查ASR命令的正确名称
+- 添加详细的错误日志
+
+**相关代码**: [Azure-RSV-Collector.psm1](file:///d:/UserProfiles/JoeHe/Codes/Azure-DR-Drill-Automation-Trae/Azure-RSV-Collector.psm1#L460-L475)
+
+---
+
+### 7.8 DateTime解析错误
+
+**错误信息**:
+```
+[ERROR] 获取数据摘要失败: Exception calling "Parse" with "1" argument(s): "String was not recognized as a valid DateTime."
+```
+
+**发生场景**: 获取数据摘要时
+
+**根本原因**: 
+- COUNT(*)返回整数，但MIN/MAX返回DBNull
+- 直接对DBNull值调用[DateTime]::Parse会失败
+- 未正确处理null值
+
+**修正方案**:
+```powershell
+# 修改前
+if ($reader.Read()) {
+    $summary[$type] = @{
+        Count = $reader["count"]
+        FirstCollectionTime = if ($reader["first_time"]) { [DateTime]::Parse($reader["first_time"]) } else { $null }
+        LastCollectionTime = if ($reader["last_time"]) { [DateTime]::Parse($reader["last_time"]) } else { $null }
+    }
+    $reader.Close()
+}
+
+# 修改后
+if ($reader.Read()) {
+    $count = [int]$reader["count"]
+    $firstTime = $reader["first_time"]
+    $lastTime = $reader["last_time"]
+    $reader.Close()
+    
+    $summary[$type] = @{
+        Count = $count
+        FirstCollectionTime = if ($firstTime -and $firstTime -ne [System.DBNull]::Value) { [DateTime]::Parse($firstTime) } else { $null }
+        LastCollectionTime = if ($lastTime -and $lastTime -ne [System.DBNull]::Value) { [DateTime]::Parse($lastTime) } else { $null }
+    }
+}
+```
+
+**预防措施**:
+- ⚠️ **重要**: 在读取数据库值后立即保存到变量，然后关闭reader
+- 检查值是否为DBNull再进行类型转换
+- 使用try-catch处理DateTime解析错误
+
+**相关代码**: [Azure-RSV-Collector.psm1](file:///d:/UserProfiles/JoeHe/Codes/Azure-DRill-Automation-Trae/Azure-RSV-Collector.psm1#L864-L876)
+
+---
+
+### 7.9 Set-AzRecoveryServicesAsrVaultContext参数错误
+
+**错误信息**:
+```
+[WARNING] 导入Vault设置失败: Cannot bind parameter 'DefaultProfile'. Cannot convert the "RSV-GIT-S-ASR-R-SEA-001" value of type "System.String" to type "Microsoft.Azure.Commands.Common.Authentication.Abstractions.Core.IAzureContextContainer".
+```
+
+**发生场景**: 导入ASR Vault上下文时
+
+**根本原因**: 
+- 参数类型不匹配
+- 传递的是字符串而不是Azure上下文对象
+- 参数名称使用错误
+
+**修正方案**:
+```powershell
+# 修改前
+$null = Set-AzRecoveryServicesAsrVaultContext -DefaultProfile $rsv.Name -ErrorAction SilentlyContinue
+
+# 修改后
+try {
+    $context = Get-AzContext
+    $null = Set-AzRecoveryServicesAsrVaultContext -DefaultProfile $context -ErrorAction SilentlyContinue
+}
+catch {
+    Write-RSVLog "导入Vault设置失败: $_" -Level "WARNING"
+}
+```
+
+**预防措施**:
+- 使用Get-AzContext获取正确的上下文对象
+- 检查参数类型是否匹配
+- 添加错误处理
+
+**相关代码**: [Azure-RSV-Collector.psm1](file:///d:/UserProfiles/JoeHe/Codes/Azure-DR-Drill-Automation-Trae/Azure-RSV-Collector.psm1#L461-L467)
+
+---
+
+### 7.10 RSV自动发现过程慢
+
+**问题描述**: 
+自动发现所有订阅下的RSV配置过程耗时较长（约40秒），影响用户体验。
+
+**发生场景**: 每次运行测试脚本时
+
+**根本原因**: 
+- 需要遍历所有订阅
+- 每个订阅都要调用Get-AzRecoveryServicesVault
+- 没有缓存机制
+
+**修正方案**:
+```powershell
+# 创建RSV列表表
+$createRSVListTable = @"
+    CREATE TABLE IF NOT EXISTS rsv_list (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        subscription_id TEXT NOT NULL,
+        subscription_name TEXT NOT NULL,
+        rsv_name TEXT NOT NULL,
+        resource_group_name TEXT NOT NULL,
+        location TEXT NOT NULL,
+        discovered_time TEXT NOT NULL,
+        UNIQUE(subscription_id, rsv_name)
+    )
+"@
+
+# 保存RSV列表到数据库
+function Save-RSVListToDatabase {
+    param(
+        [Parameter(Mandatory = $true)]
+        [array]$RSVList
+    )
+    
+    try {
+        if (-not $Script:DatabaseConnection) {
+            Write-RSVLog "数据库连接未打开" -Level "ERROR"
+            return $false
+        }
+        
+        $savedCount = 0
+        $updatedCount = 0
+        
+        foreach ($rsv in $RSVList) {
+            $subscriptionId = $rsv.SubscriptionId
+            $rsvName = $rsv.RSVName
+            $discoveredTime = (Get-Date).ToUniversalTime().ToString("o")
+            
+            $checkQuery = "SELECT id FROM rsv_list WHERE subscription_id = '$subscriptionId' AND rsv_name = '$rsvName'"
+            $command = $Script:DatabaseConnection.CreateCommand()
+            $command.CommandText = $checkQuery
+            $reader = $command.ExecuteReader()
+            
+            $exists = $reader.Read()
+            $reader.Close()
+            
+            if ($exists) {
+                # 更新
+                $updatedCount++
+            }
+            else {
+                # 新增
+                $savedCount++
+            }
+        }
+        
+        Write-RSVLog "保存RSV列表完成: 新增 $savedCount 条，更新 $updatedCount 条" -Level "INFO"
+        return $true
+    }
+    catch {
+        Write-RSVLog "保存RSV列表失败: $_" -Level "ERROR"
+        return $false
+    }
+}
+
+# 从数据库读取RSV列表
+function Get-RSVListFromDatabase {
+    try {
+        if (-not $Script:DatabaseConnection) {
+            Write-RSVLog "数据库连接未打开" -Level "ERROR"
+            return @()
+        }
+        
+        $query = "SELECT subscription_id, subscription_name, rsv_name, resource_group_name, location, discovered_time FROM rsv_list ORDER BY discovered_time DESC"
+        $command = $Script:DatabaseConnection.CreateCommand()
+        $command.CommandText = $query
+        $reader = $command.ExecuteReader()
+        
+        $rsvList = @()
+        while ($reader.Read()) {
+            $rsvList += [PSCustomObject]@{
+                SubscriptionId = $reader["subscription_id"]
+                SubscriptionName = $reader["subscription_name"]
+                RSVName = $reader["rsv_name"]
+                ResourceGroupName = $reader["resource_group_name"]
+                Location = $reader["location"]
+                DiscoveredTime = [DateTime]::Parse($reader["discovered_time"])
+            }
+        }
+        $reader.Close()
+        
+        Write-RSVLog "从数据库读取RSV列表: $($rsvList.Count) 个" -Level "INFO"
+        return $rsvList
+    }
+    catch {
+        Write-RSVLog "读取RSV列表失败: $_" -Level "ERROR"
+        return @()
+    }
+}
+
+# 在测试脚本中使用缓存
+if ($config.RSVList.Count -eq 0) {
+    # 先初始化数据库连接
+    $dbInitialized = Initialize-RSVDatabase -DatabasePath $config.DatabasePath
+    if (-not $dbInitialized) {
+        Write-Host "  数据库初始化失败" -ForegroundColor Red
+        exit 1
+    }
+    
+    # 先尝试从数据库读取RSV列表
+    $dbRSVs = Get-RSVListFromDatabase
+    
+    if ($dbRSVs -and $dbRSVs.Count -gt 0) {
+        $allRSVs = $dbRSVs
+        Write-Host "  从数据库读取RSV列表: $($dbRSVs.Count) 个" -ForegroundColor Green
+    }
+    else {
+        # 数据库中没有RSV列表，执行自动发现
+        $allRSVs = @()
+        
+        foreach ($sub in $subscriptions) {
+            # 切换到该订阅
+            $null = Select-AzSubscription -SubscriptionId $sub.Id -ErrorAction SilentlyContinue
+            
+            # 获取该订阅下的所有RSV
+            $rsvs = Get-AzRecoveryServicesVault -ErrorAction SilentlyContinue
+            
+            foreach ($rsv in $rsvs) {
+                $allRSVs += @{
+                    SubscriptionId = $sub.Id
+                    SubscriptionName = $sub.Name
+                    RSVName = $rsv.Name
+                    ResourceGroupName = $rsv.ResourceGroupName
+                    Location = $rsv.Location
+                }
+            }
+        }
+        
+        Write-Host "  发现 $($allRSVs.Count) 个RSV" -ForegroundColor Green
+        
+        # 保存RSV列表到数据库
+        $saved = Save-RSVListToDatabase -RSVList $allRSVs
+        if ($saved) {
+            Write-Host "  RSV列表已保存到数据库" -ForegroundColor Green
+        }
+    }
+    
+    # 关闭数据库连接
+    Close-RSVDatabase
+}
+```
+
+**预防措施**:
+- ⚠️ **重要**: 使用数据库缓存RSV列表，避免重复发现
+- 在读取RSV列表前先初始化数据库连接
+- 支持增量更新，避免重复数据
+- 在项目规范中明确使用缓存机制
+
+**相关代码**: [Azure-RSV-Collector.psm1](file:///d:/UserProfiles/JoeHe/Codes/Azure-DR-Drill-Automation-Trae/Azure-RSV-Collector.psm1#L248-L418), [Test-RSV-Collector.ps1](file:///d:/UserProfiles/JoeHe/Codes/Azure-DR-Drill-Automation-Trae/test/Test-RSV-Collector.ps1#L141-L193)
+
+---
+
+### 7.11 读取RSV列表前数据库未初始化
+
+**错误信息**:
+```
+[ERROR] 数据库连接未打开
+```
+
+**发生场景**: 尝试从数据库读取RSV列表时
+
+**根本原因**: 
+- 在读取RSV列表前未初始化数据库连接
+- 数据库连接生命周期管理不当
+
+**修正方案**:
+```powershell
+# 修改前
+if ($config.RSVList.Count -eq 0) {
+    Write-Host "  自动发现所有RSV..." -ForegroundColor Yellow
+    
+    # 先尝试从数据库读取RSV列表
+    $dbRSVs = Get-RSVListFromDatabase  # ❌ 数据库未初始化
+    
+    if ($dbRSVs -and $dbRSVs.Count -gt 0) {
+        $allRSVs = $dbRSVs
+        Write-Host "  从数据库读取RSV列表: $($dbRSVs.Count) 个" -ForegroundColor Green
+    }
+}
+
+# 修改后
+if ($config.RSVList.Count -eq 0) {
+    Write-Host "  自动发现所有RSV..." -ForegroundColor Yellow
+    
+    # 先初始化数据库连接
+    $dbInitialized = Initialize-RSVDatabase -DatabasePath $config.DatabasePath
+    if (-not $dbInitialized) {
+        Write-Host "  数据库初始化失败" -ForegroundColor Red
+        exit 1
+    }
+    
+    # 先尝试从数据库读取RSV列表
+    $dbRSVs = Get-RSVListFromDatabase  # ✅ 数据库已初始化
+    
+    if ($dbRSVs -and $dbRSVs.Count -gt 0) {
+        $allRSVs = $dbRSVs
+        Write-Host "  从数据库读取RSV列表: $($dbRSVs.Count) 个" -ForegroundColor Green
+    }
+    
+    # ... 处理RSV列表 ...
+    
+    # 关闭数据库连接
+    Close-RSVDatabase
+}
+```
+
+**预防措施**:
+- ⚠️ **重要**: 在读取数据库前必须先初始化数据库连接
+- 明确数据库连接的生命周期
+- 添加详细的错误日志
+- 在代码审查时检查数据库操作顺序
+
+**相关代码**: [Test-RSV-Collector.ps1](file:///d:/UserProfiles/JoeHe/Codes/Azure-DR-Drill-Automation-Trae/test/Test-RSV-Collector.ps1#L141-L147)
+
+---
+
 ## 学习要点
 
 1. **类型设计**: 使用`[object]`而不是具体类型，提高兼容性
@@ -707,6 +1327,11 @@ foreach ($file in $allFiles) {
 5. **用户体验**: 减少不必要的交互，提供清晰的提示信息
 6. **性能优化**: 使用缓存、并发、批量操作提高性能
 7. **代码审查**: 建立检查清单，确保代码质量
+8. **SQLite操作**: 使用System.Data.SQLite程序集，避免使用SQLite模块命令
+9. **Azure命令**: 确保所有必需参数都已提供，查看命令文档
+10. **数据库连接**: 明确数据库连接的生命周期，在操作前检查连接状态
+11. **CSV导出**: 使用UTF8BOM编码，确保中文正确显示
+12. **缓存机制**: 使用数据库缓存避免重复操作，提高性能
 
 ---
 
@@ -715,6 +1340,7 @@ foreach ($file in $allFiles) {
 | 版本 | 日期 | 变更说明 | 作者 |
 |------|------|---------|------|
 | 1.0.0 | 2026-01-28 | 初始版本，记录开发过程中的错误和修正方案 | Azure DR Team |
+| 1.1.0 | 2026-01-28 | 添加RSV采集错误记录（7.1-7.11） | Azure DR Team |
 
 ---
 

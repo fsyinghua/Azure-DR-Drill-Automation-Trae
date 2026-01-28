@@ -140,6 +140,13 @@ if (Test-Path $configFile) {
 if ($config.RSVList.Count -eq 0) {
     Write-Host "  自动发现所有RSV..." -ForegroundColor Yellow
     
+    # 先初始化数据库连接
+    $dbInitialized = Initialize-RSVDatabase -DatabasePath $config.DatabasePath
+    if (-not $dbInitialized) {
+        Write-Host "  数据库初始化失败" -ForegroundColor Red
+        exit 1
+    }
+    
     # 先尝试从数据库读取RSV列表
     $dbRSVs = Get-RSVListFromDatabase
     
@@ -177,6 +184,9 @@ if ($config.RSVList.Count -eq 0) {
             Write-Host "  RSV列表已保存到数据库" -ForegroundColor Green
         }
     }
+    
+    # 关闭数据库连接
+    Close-RSVDatabase
     
     # 找到第一个以"rsv"或"RSV"开头的RSV用于测试
     $testRSV = $allRSVs | Where-Object { $_.RSVName -like "rsv*" -or $_.RSVName -like "RSV*" } | Select-Object -First 1

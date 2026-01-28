@@ -41,7 +41,36 @@ try {
     
     # 查找DLL文件
     Write-Host "`n[3] 查找DLL文件..." -ForegroundColor Yellow
-    $dllFile = Get-ChildItem $extractPath -Recurse -Filter "System.Data.SQLite.dll" | Select-Object -First 1
+    
+    # 显示解压后的目录结构
+    Write-Host "  解压后的目录结构:" -ForegroundColor Gray
+    Get-ChildItem $extractPath -Recurse -Directory | Select-Object -First 10 | ForEach-Object {
+        Write-Host "    $($_.FullName.Replace("$extractPath\", ""))" -ForegroundColor DarkGray
+    }
+    
+    # 尝试多个可能的DLL路径
+    $possiblePaths = @(
+        "$extractPath\lib\net46\System.Data.SQLite.dll",
+        "$extractPath\lib\netstandard2.0\System.Data.SQLite.dll",
+        "$extractPath\lib\net6.0\System.Data.SQLite.dll",
+        "$extractPath\lib\net20\System.Data.SQLite.dll",
+        "$extractPath\lib\net40\System.Data.SQLite.dll"
+    )
+    
+    $dllFile = $null
+    foreach ($path in $possiblePaths) {
+        if (Test-Path $path) {
+            $dllFile = Get-Item $path
+            Write-Host "  ✓ 找到DLL: $path" -ForegroundColor Green
+            break
+        }
+    }
+    
+    # 如果没找到，尝试递归搜索
+    if (-not $dllFile) {
+        Write-Host "  递归搜索DLL文件..." -ForegroundColor Gray
+        $dllFile = Get-ChildItem $extractPath -Recurse -Filter "System.Data.SQLite.dll" | Select-Object -First 1
+    }
     
     if ($dllFile) {
         Write-Host "  ✓ 找到DLL: $($dllFile.FullName)" -ForegroundColor Green

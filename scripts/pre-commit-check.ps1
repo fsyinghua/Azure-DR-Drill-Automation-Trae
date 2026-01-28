@@ -89,11 +89,11 @@ if ($exportErrors -eq 0) {
 Write-Host ""
 Write-Host "检查4: 敏感信息..." -ForegroundColor Yellow
 $sensitivePatterns = @(
-    'password\s*=\s*["\'].*["\']',
-    'secret\s*=\s*["\'].*["\']',
-    'token\s*=\s*["\'].*["\']',
-    'apikey\s*=\s*["\'].*["\']',
-    'credential\s*=\s*["\'].*["\']'
+    "password\s*=\s*[`"'].*[`"']",
+    "secret\s*=\s*[`"'].*[`"']",
+    "token\s*=\s*[`"'].*[`"']",
+    "apikey\s*=\s*[`"'].*[`"']",
+    "credential\s*=\s*[`"'].*[`"']"
 )
 
 $sensitiveErrors = 0

@@ -369,7 +369,7 @@ function Get-RSVBackupVMs {
         
         foreach ($container in $containers) {
             # 获取Backup项
-            $items = Get-AzRecoveryServicesBackupItem -Container $container -VaultId $rsv.ID -ErrorAction SilentlyContinue
+            $items = Get-AzRecoveryServicesBackupItem -Container $container -VaultId $rsv.ID -WorkloadType "AzureVM" -ErrorAction SilentlyContinue
             
             foreach ($item in $items) {
                 # 只处理虚拟机

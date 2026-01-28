@@ -241,6 +241,24 @@ function Initialize-RSVDatabase {
         $command.ExecuteNonQuery()
         Write-RSVLog "创建replicated_items表" -Level "INFO"
         
+        # 创建RSV列表表
+        $createRSVListTable = @"
+        CREATE TABLE IF NOT EXISTS rsv_list (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subscription_id TEXT NOT NULL,
+            subscription_name TEXT NOT NULL,
+            rsv_name TEXT NOT NULL,
+            resource_group_name TEXT NOT NULL,
+            location TEXT NOT NULL,
+            discovered_time TEXT NOT NULL,
+            UNIQUE(subscription_id, rsv_name)
+        )
+"@
+        
+        $command.CommandText = $createRSVListTable
+        $command.ExecuteNonQuery()
+        Write-RSVLog "创建rsv_list表" -Level "INFO"
+        
         Write-RSVLog "数据库初始化完成" -Level "INFO"
         
         return $true
@@ -271,6 +289,128 @@ function Close-RSVDatabase {
     }
     catch {
         Write-RSVLog "关闭数据库连接失败: $_" -Level "ERROR"
+    }
+}
+
+function Save-RSVListToDatabase {
+    <#
+    .SYNOPSIS
+        保存RSV列表到数据库
+    
+    .DESCRIPTION
+        将发现的RSV列表保存到数据库中，避免重复发现
+    
+    .PARAMETER RSVList
+        RSV列表数组
+    
+    .EXAMPLE
+        Save-RSVListToDatabase -RSVList $allRSVs
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [array]$RSVList
+    )
+    
+    try {
+        if (-not $Script:DatabaseConnection) {
+            Write-RSVLog "数据库连接未打开" -Level "ERROR"
+            return $false
+        }
+        
+        $savedCount = 0
+        $updatedCount = 0
+        
+        foreach ($rsv in $RSVList) {
+            $subscriptionId = $rsv.SubscriptionId
+            $rsvName = $rsv.RSVName
+            $discoveredTime = (Get-Date).ToUniversalTime().ToString("o")
+            
+            $checkQuery = "SELECT id FROM rsv_list WHERE subscription_id = '$subscriptionId' AND rsv_name = '$rsvName'"
+            $command = $Script:DatabaseConnection.CreateCommand()
+            $command.CommandText = $checkQuery
+            $reader = $command.ExecuteReader()
+            
+            $exists = $reader.Read()
+            $reader.Close()
+            
+            if ($exists) {
+                $updateQuery = @"
+                UPDATE rsv_list 
+                SET subscription_name = '$($rsv.SubscriptionName)',
+                    resource_group_name = '$($rsv.ResourceGroupName)',
+                    location = '$($rsv.Location)',
+                    discovered_time = '$discoveredTime'
+                WHERE subscription_id = '$subscriptionId' AND rsv_name = '$rsvName'
+"@
+                
+                $command.CommandText = $updateQuery
+                $command.ExecuteNonQuery()
+                $updatedCount++
+            }
+            else {
+                $insertQuery = @"
+                INSERT INTO rsv_list 
+                (subscription_id, subscription_name, rsv_name, resource_group_name, location, discovered_time)
+                VALUES 
+                ('$subscriptionId', '$($rsv.SubscriptionName)', '$rsvName', '$($rsv.ResourceGroupName)', '$($rsv.Location)', '$discoveredTime')
+"@
+                
+                $command.CommandText = $insertQuery
+                $command.ExecuteNonQuery()
+                $savedCount++
+            }
+        }
+        
+        Write-RSVLog "保存RSV列表完成: 新增 $savedCount 条，更新 $updatedCount 条" -Level "INFO"
+        return $true
+    }
+    catch {
+        Write-RSVLog "保存RSV列表失败: $_" -Level "ERROR"
+        return $false
+    }
+}
+
+function Get-RSVListFromDatabase {
+    <#
+    .SYNOPSIS
+        从数据库读取RSV列表
+    
+    .DESCRIPTION
+        从数据库中读取已保存的RSV列表
+    
+    .EXAMPLE
+        $rsvList = Get-RSVListFromDatabase
+    #>
+    try {
+        if (-not $Script:DatabaseConnection) {
+            Write-RSVLog "数据库连接未打开" -Level "ERROR"
+            return @()
+        }
+        
+        $query = "SELECT subscription_id, subscription_name, rsv_name, resource_group_name, location, discovered_time FROM rsv_list ORDER BY discovered_time DESC"
+        $command = $Script:DatabaseConnection.CreateCommand()
+        $command.CommandText = $query
+        $reader = $command.ExecuteReader()
+        
+        $rsvList = @()
+        while ($reader.Read()) {
+            $rsvList += [PSCustomObject]@{
+                SubscriptionId = $reader["subscription_id"]
+                SubscriptionName = $reader["subscription_name"]
+                RSVName = $reader["rsv_name"]
+                ResourceGroupName = $reader["resource_group_name"]
+                Location = $reader["location"]
+                DiscoveredTime = [DateTime]::Parse($reader["discovered_time"])
+            }
+        }
+        $reader.Close()
+        
+        Write-RSVLog "从数据库读取RSV列表: $($rsvList.Count) 个" -Level "INFO"
+        return $rsvList
+    }
+    catch {
+        Write-RSVLog "读取RSV列表失败: $_" -Level "ERROR"
+        return @()
     }
 }
 
@@ -1107,6 +1247,8 @@ Export-ModuleMember -Function @(
     'Test-SQLiteModule',
     'Initialize-RSVDatabase',
     'Close-RSVDatabase',
+    'Save-RSVListToDatabase',
+    'Get-RSVListFromDatabase',
     'Get-LastCollectionTime',
     'Get-RSVBackupVMs',
     'Get-RSVReplicatedItems',

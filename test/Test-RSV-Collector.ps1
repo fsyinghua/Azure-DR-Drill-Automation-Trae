@@ -139,27 +139,44 @@ if (Test-Path $configFile) {
 # 如果没有RSV列表，自动发现所有RSV
 if ($config.RSVList.Count -eq 0) {
     Write-Host "  自动发现所有RSV..." -ForegroundColor Yellow
-    $allRSVs = @()
     
-    foreach ($sub in $subscriptions) {
-        # 切换到该订阅
-        $null = Select-AzSubscription -SubscriptionId $sub.Id -ErrorAction SilentlyContinue
+    # 先尝试从数据库读取RSV列表
+    $dbRSVs = Get-RSVListFromDatabase
+    
+    if ($dbRSVs -and $dbRSVs.Count -gt 0) {
+        $allRSVs = $dbRSVs
+        Write-Host "  从数据库读取RSV列表: $($dbRSVs.Count) 个" -ForegroundColor Green
+    }
+    else {
+        # 数据库中没有RSV列表，执行自动发现
+        $allRSVs = @()
         
-        # 获取该订阅下的所有RSV
-        $rsvs = Get-AzRecoveryServicesVault -ErrorAction SilentlyContinue
-        
-        foreach ($rsv in $rsvs) {
-            $allRSVs += @{
-                SubscriptionId = $sub.Id
-                SubscriptionName = $sub.Name
-                RSVName = $rsv.Name
-                ResourceGroupName = $rsv.ResourceGroupName
-                Location = $rsv.Location
+        foreach ($sub in $subscriptions) {
+            # 切换到该订阅
+            $null = Select-AzSubscription -SubscriptionId $sub.Id -ErrorAction SilentlyContinue
+            
+            # 获取该订阅下的所有RSV
+            $rsvs = Get-AzRecoveryServicesVault -ErrorAction SilentlyContinue
+            
+            foreach ($rsv in $rsvs) {
+                $allRSVs += @{
+                    SubscriptionId = $sub.Id
+                    SubscriptionName = $sub.Name
+                    RSVName = $rsv.Name
+                    ResourceGroupName = $rsv.ResourceGroupName
+                    Location = $rsv.Location
+                }
             }
         }
+        
+        Write-Host "  发现 $($allRSVs.Count) 个RSV" -ForegroundColor Green
+        
+        # 保存RSV列表到数据库
+        $saved = Save-RSVListToDatabase -RSVList $allRSVs
+        if ($saved) {
+            Write-Host "  RSV列表已保存到数据库" -ForegroundColor Green
+        }
     }
-    
-    Write-Host "  发现 $($allRSVs.Count) 个RSV" -ForegroundColor Green
     
     # 找到第一个以"rsv"或"RSV"开头的RSV用于测试
     $testRSV = $allRSVs | Where-Object { $_.RSVName -like "rsv*" -or $_.RSVName -like "RSV*" } | Select-Object -First 1
@@ -181,7 +198,7 @@ if ($config.RSVList.Count -eq 0) {
         }
     }
     
-    # 保存所有RSV到数据库
+    # 保存所有RSV到配置
     $config.AllRSVs = $allRSVs
 }
 

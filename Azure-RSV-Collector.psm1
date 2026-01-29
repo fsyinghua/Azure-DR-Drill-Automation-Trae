@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Azure RSV配置采集模块 - 提供Recovery Services Vault配置和状态采集功能
 
@@ -86,14 +86,17 @@ function Test-SQLiteModule {
     }
     catch {
         # 方法2: 检查lib目录下的DLL
-        $moduleDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+        $moduleDir = $null
 
-        # 如果MyInvocation.MyCommand.Path为null，使用PSScriptRoot作为备用
-        if (-not $moduleDir) {
+        # 尝试多种方法获取模块目录
+        if ($MyInvocation.MyCommand.Path) {
+            $moduleDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+        }
+
+        if (-not $moduleDir -and $PSScriptRoot) {
             $moduleDir = $PSScriptRoot
         }
 
-        # 如果还是为null，使用当前目录作为备用
         if (-not $moduleDir) {
             $moduleDir = Get-Location
         }
@@ -168,7 +171,11 @@ function Initialize-RSVDatabase {
         }
 
         # 确保目录存在
-        $dbDir = Split-Path -Path $DatabasePath -Parent
+        $dbDir = $null
+
+        if ($DatabasePath) {
+            $dbDir = Split-Path -Path $DatabasePath -Parent -ErrorAction SilentlyContinue
+        }
 
         # 如果Split-Path返回空字符串（相对路径），使用当前目录
         if (-not $dbDir) {
@@ -873,7 +880,11 @@ function Export-RSVDataToCSV {
         }
 
         # 确保目录存在
-        $exportDir = Split-Path -Path $FilePath -Parent
+        $exportDir = $null
+
+        if ($FilePath) {
+            $exportDir = Split-Path -Path $FilePath -Parent -ErrorAction SilentlyContinue
+        }
 
         # 如果Split-Path返回空字符串（相对路径），使用当前目录
         if (-not $exportDir) {
@@ -988,7 +999,11 @@ function Export-RSVDataToExcel {
         }
 
         # 确保目录存在
-        $exportDir = Split-Path -Path $FilePath -Parent
+        $exportDir = $null
+
+        if ($FilePath) {
+            $exportDir = Split-Path -Path $FilePath -Parent -ErrorAction SilentlyContinue
+        }
 
         # 如果Split-Path返回空字符串（相对路径），使用当前目录
         if (-not $exportDir) {
@@ -1248,7 +1263,11 @@ function Invoke-RSVCollection {
 
         # 初始化日志
         $Script:LogPath = if ($Config.LogPath) { $Config.LogPath } else { ".\logs\rsv-collector.log" }
-        $logDir = Split-Path -Path $Script:LogPath -Parent
+        $logDir = $null
+
+        if ($Script:LogPath) {
+            $logDir = Split-Path -Path $Script:LogPath -Parent -ErrorAction SilentlyContinue
+        }
 
         # 如果Split-Path返回空字符串（相对路径），使用当前目录
         if (-not $logDir) {
